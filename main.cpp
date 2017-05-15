@@ -18,7 +18,7 @@ typedef uint8_t u8;
 double lx = 0.0, ly = 0.0;
 double rx = 0.0, ry = 0.0;
 QGamepadManager::GamepadButtons buttons = 0;
-QString hostname;
+QString ipAddress;
 int yAxisMultiplicator = 1;
 
 void sendFrame(void)
@@ -58,7 +58,7 @@ void sendFrame(void)
     qToLittleEndian(touchState, (uchar *)ba.data() + 4);
     qToLittleEndian(circleState, (uchar *)ba.data() + 8);
 
-    QUdpSocket().writeDatagram(ba, QHostAddress("192.168.1.12"), 4950);
+    QUdpSocket().writeDatagram(ba, QHostAddress(ipAddress), 4950);
 }
 
 struct GamepadMonitor : public QObject {
@@ -92,7 +92,7 @@ struct GamepadMonitor : public QObject {
                     lx = value;
                     break;
                 case QGamepadManager::AxisLeftY:
-                    ly = -value; // for some reason qt inverts this
+                    ly = yAxisMultiplicator * -value; // for some reason qt inverts this
                     break;
                 default: break;
             }
@@ -134,7 +134,7 @@ public:
         invertYCheckbox = new QCheckBox(this);
         layout = new QFormLayout(this);
 
-        layout->addRow(tr("Hostname or IP &address"), addrLineEdit);
+        layout->addRow(tr("IP &address"), addrLineEdit);
         layout->addRow(tr("&Invert Y axis"), invertYCheckbox);
 
         this->setLayout(layout);
@@ -142,7 +142,7 @@ public:
         connect(addrLineEdit, &QLineEdit::textChanged, this,
                 [](const QString &text)
         {
-            hostname = text;
+            ipAddress = text;
         });
 
         connect(invertYCheckbox, &QCheckBox::stateChanged, this,
@@ -160,14 +160,9 @@ public:
             }
         });
 
-        touchScreen = new TouchScreen(this);
+        touchScreen = new TouchScreen(this); // TODO: fix this
     }
 
-    /*virtual void show(void)
-    {
-        QWidget::show();
-        touchScreen->show();
-    }*/
 };
 
 
@@ -178,7 +173,7 @@ int main(int argc, char *argv[])
     GamepadMonitor m(&w);
     FrameTimer t(&w);
     TouchScreen ts;
-    t.start(10);
+    t.start(50);
     w.show();
 
     return a.exec();
