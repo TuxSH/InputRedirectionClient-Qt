@@ -7,9 +7,20 @@
 #include <QUdpSocket>
 #include <QTimer>
 #include <QFormLayout>
+#include <QVBoxLayout>
 #include <QLineEdit>
+#include <QPushButton>
 #include <QCheckBox>
 #include <QDialog>
+#include <QMouseEvent>
+#include <QCloseEvent>
+
+#include <algorithm>
+
+#define CPAD_BOUND          0x5d0
+
+#define TOUCH_SCREEN_WIDTH  320
+#define TOUCH_SCREEN_HEIGHT 240
 
 typedef uint32_t u32;
 typedef uint16_t u16;
@@ -18,8 +29,12 @@ typedef uint8_t u8;
 double lx = 0.0, ly = 0.0;
 double rx = 0.0, ry = 0.0;
 QGamepadManager::GamepadButtons buttons = 0;
+u32 specialButtons = 0;
 QString ipAddress;
-int yAxisMultiplicator = 1;
+int yAxisMultiplier = 1;
+
+bool touchScreenPressed;
+QPoint touchScreenPosition;
 
 void sendFrame(void)
 {
@@ -45,25 +60,44 @@ void sendFrame(void)
             hidPad &= ~(1 << i);
     }
 
-    u32 touchState = 0x2000000;
-    u32 circleState = 0x7ff7ff;
-    u16 x = (u16)(lx * 0x5d0 + 0x800);
-    u16 y = (u16)(ly * 0x5d0 + 0x800);
+    specialButtons |= (buttons & (1 << QGamepadManager::ButtonGuide)) ? 1 : 0;
+
+    u32 touchScreenState = 0x2000000;
+    u32 circlePadState = 0x7ff7ff;
 
     if(lx != 0.0 || ly != 0.0)
-        circleState = ((u32) y << 12) | (u32)x;
+    {
+        u32 x = (u32)(lx * CPAD_BOUND + 0x800);
+        u32 y = (u32)(ly * CPAD_BOUND + 0x800);
+        x = x >= 0xfff ? 0xfff : x;
+        y = y >= 0xfff ? 0xfff : y;
 
-    QByteArray ba(12, 0);
+        circlePadState = (y << 12) | x;
+    }
+
+    if(touchScreenPressed)
+    {
+        u32 x = (u32)(0xfff * std::min(std::max(0, touchScreenPosition.x()), TOUCH_SCREEN_WIDTH)) / TOUCH_SCREEN_WIDTH;
+        u32 y = (u32)(0xfff * std::min(std::max(0, touchScreenPosition.y()), TOUCH_SCREEN_HEIGHT)) / TOUCH_SCREEN_HEIGHT;
+        touchScreenState = (1 << 24) | (y << 12) | x;
+    }
+
+    u32 extraButtons = 0; // unk
+    u32 cpadProState = 0; // unk
+
+    QByteArray ba(24, 0);
     qToLittleEndian(hidPad, (uchar *)ba.data());
-    qToLittleEndian(touchState, (uchar *)ba.data() + 4);
-    qToLittleEndian(circleState, (uchar *)ba.data() + 8);
-
+    qToLittleEndian(touchScreenState, (uchar *)ba.data() + 4);
+    qToLittleEndian(circlePadState, (uchar *)ba.data() + 8);
+    qToLittleEndian(extraButtons, (uchar *)ba.data() + 12);
+    qToLittleEndian(cpadProState, (uchar *)ba.data() + 16);
+    qToLittleEndian(specialButtons, (uchar *)ba.data() + 20);
     QUdpSocket().writeDatagram(ba, QHostAddress(ipAddress), 4950);
 }
 
 struct GamepadMonitor : public QObject {
 
-    GamepadMonitor(QObject *parent = Q_NULLPTR) : QObject(parent)
+    GamepadMonitor(QObject *parent = nullptr) : QObject(parent)
     {
         connect(QGamepadManager::instance(), &QGamepadManager::gamepadButtonPressEvent, this,
             [](int deviceId, QGamepadManager::GamepadButton button, double value)
@@ -92,7 +126,7 @@ struct GamepadMonitor : public QObject {
                     lx = value;
                     break;
                 case QGamepadManager::AxisLeftY:
-                    ly = yAxisMultiplicator * -value; // for some reason qt inverts this
+                    ly = yAxisMultiplier * -value; // for some reason qt inverts this
                     break;
                 default: break;
             }
@@ -102,14 +136,44 @@ struct GamepadMonitor : public QObject {
 };
 
 struct TouchScreen : public QDialog {
-    TouchScreen(QWidget *parent = Q_NULLPTR) : QDialog(parent)
+    TouchScreen(QWidget *parent = nullptr) : QDialog(parent)
     {
-        this->setFixedSize(320, 240);
+        this->setFixedSize(TOUCH_SCREEN_WIDTH, TOUCH_SCREEN_HEIGHT);
+        this->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint);
+        this->setWindowTitle(tr("InputRedirectionClient-Qt - Touch screen"));
+    }
+
+    void mousePressEvent(QMouseEvent *ev)
+    {
+        if(ev->button() == Qt::LeftButton)
+        {
+            touchScreenPressed = true;
+            touchScreenPosition = ev->pos();
+            sendFrame();
+        }
+    }
+
+    void mouseMoveEvent(QMouseEvent *ev)
+    {
+        if(touchScreenPressed && (ev->buttons() & Qt::LeftButton))
+        {
+            touchScreenPosition = ev->pos();
+            sendFrame();
+        }
+    }
+
+    void mouseReleaseEvent(QMouseEvent *ev)
+    {
+        if(ev->button() == Qt::LeftButton)
+        {
+            touchScreenPressed = false;
+            sendFrame();
+        }
     }
 };
 
 struct FrameTimer : public QTimer {
-    FrameTimer(QObject *parent = Q_NULLPTR) : QTimer(parent)
+    FrameTimer(QObject *parent = nullptr) : QTimer(parent)
     {
         connect(this, &QTimer::timeout, this,
                 [](void)
@@ -123,21 +187,32 @@ struct FrameTimer : public QTimer {
 class Widget : public QWidget
 {
 private:
-    QFormLayout *layout;
+    QVBoxLayout *layout;
+    QFormLayout *formLayout;
     QLineEdit *addrLineEdit;
     QCheckBox *invertYCheckbox;
+    QPushButton *homeButton, *powerButton, *longPowerButton;
     TouchScreen *touchScreen;
 public:
-    Widget(QWidget *parent = Q_NULLPTR) : QWidget(parent)
+    Widget(QWidget *parent = nullptr) : QWidget(parent)
     {
+        layout = new QVBoxLayout(this);
+
         addrLineEdit = new QLineEdit(this);
         invertYCheckbox = new QCheckBox(this);
-        layout = new QFormLayout(this);
+        formLayout = new QFormLayout;
 
-        layout->addRow(tr("IP &address"), addrLineEdit);
-        layout->addRow(tr("&Invert Y axis"), invertYCheckbox);
+        formLayout->addRow(tr("IP &address"), addrLineEdit);
+        formLayout->addRow(tr("&Invert Y axis"), invertYCheckbox);
 
-        this->setLayout(layout);
+        homeButton = new QPushButton(tr("&HOME"), this);
+        powerButton = new QPushButton(tr("&POWER"), this);
+        longPowerButton = new QPushButton(tr("POWER (&long)"), this);
+
+        layout->addLayout(formLayout);
+        layout->addWidget(homeButton);
+        layout->addWidget(powerButton);
+        layout->addWidget(longPowerButton);
 
         connect(addrLineEdit, &QLineEdit::textChanged, this,
                 [](const QString &text)
@@ -151,16 +226,76 @@ public:
             switch(state)
             {
                 case Qt::Unchecked:
-                    yAxisMultiplicator = 1;
+                    yAxisMultiplier = 1;
                     break;
                 case Qt::Checked:
-                    yAxisMultiplicator = -1;
+                    yAxisMultiplier = -1;
                     break;
                 default: break;
             }
         });
 
-        touchScreen = new TouchScreen(this); // TODO: fix this
+        connect(homeButton, &QPushButton::pressed, this,
+                [](void)
+        {
+           specialButtons |= 1;
+           sendFrame();
+        });
+
+        connect(homeButton, &QPushButton::released, this,
+                [](void)
+        {
+           specialButtons &= ~1;
+           sendFrame();
+        });
+
+        connect(powerButton, &QPushButton::pressed, this,
+                [](void)
+        {
+           specialButtons |= 2;
+           sendFrame();
+        });
+
+        connect(powerButton, &QPushButton::released, this,
+                [](void)
+        {
+           specialButtons &= ~2;
+           sendFrame();
+        });
+
+        connect(longPowerButton, &QPushButton::pressed, this,
+                [](void)
+        {
+           specialButtons |= 4;
+           sendFrame();
+        });
+
+        connect(longPowerButton, &QPushButton::released, this,
+                [](void)
+        {
+           specialButtons &= ~4;
+           sendFrame();
+        });
+
+        touchScreen = new TouchScreen(nullptr);
+        this->setWindowTitle(tr("InputRedirectionClient-Qt"));
+    }
+
+    void show(void)
+    {
+        QWidget::show();
+        touchScreen->show();
+    }
+
+    void closeEvent(QCloseEvent *ev)
+    {
+        touchScreen->close();
+        ev->accept();
+    }
+
+    virtual ~Widget(void)
+    {
+        delete touchScreen;
     }
 
 };
