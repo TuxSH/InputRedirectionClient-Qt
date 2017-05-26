@@ -16,8 +16,10 @@
 #include <QCloseEvent>
 
 #include <algorithm>
+#include <cmath>
 
 #define CPAD_BOUND          0x5d0
+#define CPP_BOUND           0x7f
 
 #define TOUCH_SCREEN_WIDTH  320
 #define TOUCH_SCREEN_HEIGHT 240
@@ -53,6 +55,11 @@ void sendFrame(void)
         QGamepadManager::ButtonY,
     };
 
+    static const QGamepadManager::GamepadButton irButtons[] = {
+        QGamepadManager::ButtonR2,
+        QGamepadManager::ButtonL2,
+    };
+
     u32 hidPad = 0xfff;
     for(u32 i = 0; i < 12; i++)
     {
@@ -60,10 +67,18 @@ void sendFrame(void)
             hidPad &= ~(1 << i);
     }
 
+    u32 irButtonsState = 0;
+    for(u32 i = 0; i < 2; i++)
+    {
+        if(buttons & (1 << irButtons[i]))
+            hidPad |= 1 << (i + 1);
+    }
+
     specialButtons |= (buttons & (1 << QGamepadManager::ButtonGuide)) ? 1 : 0;
 
     u32 touchScreenState = 0x2000000;
     u32 circlePadState = 0x7ff7ff;
+    u32 cppState = 0x80800081;
 
     if(lx != 0.0 || ly != 0.0)
     {
@@ -75,6 +90,17 @@ void sendFrame(void)
         circlePadState = (y << 12) | x;
     }
 
+    if(rx != 0.0 || ry != 0.0 || irButtonsState != 0)
+    {
+        // We have to rotate the c-stick position 45°. Thanks, Nintendo.
+        u32 x = (u32)(M_SQRT1_2 * (rx + ry) * CPP_BOUND + 0x80);
+        u32 y = (u32)(M_SQRT1_2 * (ry - rx) * CPP_BOUND + 0x80);
+        x = x >= 0xff ? 0xff : x;
+        y = y >= 0xff ? 0xff : y;
+
+        cppState = (y << 24) | (x << 16) | (irButtonsState << 8) | 0x81;
+    }
+
     if(touchScreenPressed)
     {
         u32 x = (u32)(0xfff * std::min(std::max(0, touchScreenPosition.x()), TOUCH_SCREEN_WIDTH)) / TOUCH_SCREEN_WIDTH;
@@ -82,16 +108,12 @@ void sendFrame(void)
         touchScreenState = (1 << 24) | (y << 12) | x;
     }
 
-    u32 extraButtons = 0; // unk
-    u32 cpadProState = 0; // unk
-
-    QByteArray ba(24, 0);
+    QByteArray ba(20, 0);
     qToLittleEndian(hidPad, (uchar *)ba.data());
     qToLittleEndian(touchScreenState, (uchar *)ba.data() + 4);
     qToLittleEndian(circlePadState, (uchar *)ba.data() + 8);
-    qToLittleEndian(extraButtons, (uchar *)ba.data() + 12);
-    qToLittleEndian(cpadProState, (uchar *)ba.data() + 16);
-    qToLittleEndian(specialButtons, (uchar *)ba.data() + 20);
+    qToLittleEndian(cppState, (uchar *)ba.data() + 12);
+    qToLittleEndian(specialButtons, (uchar *)ba.data() + 16);
     QUdpSocket().writeDatagram(ba, QHostAddress(ipAddress), 4950);
 }
 
@@ -116,7 +138,7 @@ struct GamepadMonitor : public QObject {
             sendFrame();
         });
         connect(QGamepadManager::instance(), &QGamepadManager::gamepadAxisEvent, this,
-            [](int deviceId, QGamepadManager::GamepadAxis axis, double  value)
+            [](int deviceId, QGamepadManager::GamepadAxis axis, double value)
         {
             (void)deviceId;
             (void)value;
@@ -128,7 +150,14 @@ struct GamepadMonitor : public QObject {
                 case QGamepadManager::AxisLeftY:
                     ly = yAxisMultiplier * -value; // for some reason qt inverts this
                     break;
-                default: break;
+
+                case QGamepadManager::AxisRightX:
+                    rx = value;
+                    break;
+                case QGamepadManager::AxisRightY:
+                    ry = yAxisMultiplier * -value; // for some reason qt inverts this
+                    break;
+                    default: break;
             }
             sendFrame();
         });
