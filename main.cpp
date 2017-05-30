@@ -71,7 +71,7 @@ void sendFrame(void)
     for(u32 i = 0; i < 2; i++)
     {
         if(buttons & (1 << irButtons[i]))
-            hidPad |= 1 << (i + 1);
+            irButtonsState |= 1 << (i + 1);
     }
 
     specialButtons |= (buttons & (1 << QGamepadManager::ButtonGuide)) ? 1 : 0;
