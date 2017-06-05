@@ -41,8 +41,8 @@ QPoint touchScreenPosition;
 void sendFrame(void)
 {
     static const QGamepadManager::GamepadButton hidButtons[] = {
-        QGamepadManager::ButtonA,
         QGamepadManager::ButtonB,
+        QGamepadManager::ButtonA,
         QGamepadManager::ButtonSelect,
         QGamepadManager::ButtonStart,
         QGamepadManager::ButtonRight,
