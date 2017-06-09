@@ -199,6 +199,13 @@ struct TouchScreen : public QDialog {
             sendFrame();
         }
     }
+
+    void closeEvent(QCloseEvent *ev)
+    {
+        touchScreenPressed = false;
+        sendFrame();
+        ev->accept();
+    }
 };
 
 struct FrameTimer : public QTimer {
@@ -324,6 +331,11 @@ public:
 
     virtual ~Widget(void)
     {
+        lx = ly = rx = ry = 0.0;
+        buttons = 0;
+        specialButtons = 0;
+        touchScreenPressed = false;
+        sendFrame();
         delete touchScreen;
     }
 
