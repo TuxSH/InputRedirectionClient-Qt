@@ -74,7 +74,14 @@ void sendFrame(void)
             irButtonsState |= 1 << (i + 1);
     }
 
-    specialButtons |= (buttons & (1 << QGamepadManager::ButtonGuide)) ? 1 : 0;
+    if (buttons & (1 << QGamepadManager::ButtonGuide))
+    {
+        specialButtons |= 1;
+    }
+    else 
+    {
+        specialButtons &= ~1;
+    }
 
     u32 touchScreenState = 0x2000000;
     u32 circlePadState = 0x7ff7ff;
