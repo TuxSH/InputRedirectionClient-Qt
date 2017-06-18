@@ -102,8 +102,8 @@ void sendFrame(void)
         // We have to rotate the c-stick position 45°. Thanks, Nintendo.
         u32 x = (u32)(M_SQRT1_2 * (rx + ry) * CPP_BOUND + 0x80);
         u32 y = (u32)(M_SQRT1_2 * (ry - rx) * CPP_BOUND + 0x80);
-        x = x >= 0xff ? 0xff : x;
-        y = y >= 0xff ? 0xff : y;
+        x = x >= 0xff ? (ry < 0.0 ? 0x00 : 0xff) : x;
+        y = y >= 0xff ? (ry < 0.0 ? 0x00 : 0xff) : y;
 
         cppState = (y << 24) | (x << 16) | (irButtonsState << 8) | 0x81;
     }
