@@ -62,9 +62,9 @@ void sendFrame(void)
     };
 
     static const QGamepadManager::GamepadButton speButtons[] = {
-        QGamepadManager::ButtonGuide,
         QGamepadManager::ButtonR3,
         QGamepadManager::ButtonL3,
+        QGamepadManager::ButtonGuide,
     };
 
     u32 hidPad = 0xfff;
