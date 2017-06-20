@@ -1,4 +1,7 @@
+#ifdef _MSC_VER
 #define _USE_MATH_DEFINES
+#endif
+
 #include <QWidget>
 #include <QApplication>
 #include <QDebug>
@@ -15,6 +18,7 @@
 #include <QDialog>
 #include <QMouseEvent>
 #include <QCloseEvent>
+#include <QSettings>
 
 #include <algorithm>
 #include <cmath>
@@ -38,6 +42,8 @@ int yAxisMultiplier = 1;
 
 bool touchScreenPressed;
 QPoint touchScreenPosition;
+
+QSettings settings("TuxSH", "InputRedirectionClient-Qt");
 
 void sendFrame(void)
 {
@@ -249,6 +255,8 @@ public:
         layout = new QVBoxLayout(this);
 
         addrLineEdit = new QLineEdit(this);
+        addrLineEdit->setClearButtonEnabled(true);
+
         invertYCheckbox = new QCheckBox(this);
         formLayout = new QFormLayout;
 
@@ -268,6 +276,7 @@ public:
                 [](const QString &text)
         {
             ipAddress = text;
+            settings.setValue("ipAddress", text);
         });
 
         connect(invertYCheckbox, &QCheckBox::stateChanged, this,
@@ -277,9 +286,11 @@ public:
             {
                 case Qt::Unchecked:
                     yAxisMultiplier = 1;
+                    settings.setValue("invertY", false);
                     break;
                 case Qt::Checked:
                     yAxisMultiplier = -1;
+                    settings.setValue("invertY", true);
                     break;
                 default: break;
             }
@@ -329,6 +340,9 @@ public:
 
         touchScreen = new TouchScreen(nullptr);
         this->setWindowTitle(tr("InputRedirectionClient-Qt"));
+
+        addrLineEdit->setText(settings.value("ipAddress", "").toString());
+        invertYCheckbox->setChecked(settings.value("invertY", false).toBool());
     }
 
     void show(void)
