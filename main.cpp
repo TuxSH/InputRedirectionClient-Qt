@@ -36,7 +36,7 @@ typedef uint8_t u8;
 double lx = 0.0, ly = 0.0;
 double rx = 0.0, ry = 0.0;
 QGamepadManager::GamepadButtons buttons = 0;
-u32 specialButtons = 0;
+u32 interfaceButtons = 0;
 QString ipAddress;
 int yAxisMultiplier = 1;
 
@@ -67,6 +67,12 @@ void sendFrame(void)
         QGamepadManager::ButtonL2,
     };
 
+    static const QGamepadManager::GamepadButton speButtons[] = {
+        QGamepadManager::ButtonR3,
+        QGamepadManager::ButtonL3,
+        QGamepadManager::ButtonGuide,
+    };
+
     u32 hidPad = 0xfff;
     for(u32 i = 0; i < 12; i++)
     {
@@ -81,14 +87,14 @@ void sendFrame(void)
             irButtonsState |= 1 << (i + 1);
     }
 
-    if (buttons & (1 << QGamepadManager::ButtonGuide))
+    u32 specialButtonsState = 0;
+    for(u32 i = 0; i < 3; i++)
     {
-        specialButtons |= 1;
+
+        if(buttons & (1 << speButtons[i]))
+            specialButtonsState |= 1 << i;
     }
-    else 
-    {
-        specialButtons &= ~1;
-    }
+    specialButtonsState |= interfaceButtons;
 
     u32 touchScreenState = 0x2000000;
     u32 circlePadState = 0x7ff7ff;
@@ -127,7 +133,7 @@ void sendFrame(void)
     qToLittleEndian(touchScreenState, (uchar *)ba.data() + 4);
     qToLittleEndian(circlePadState, (uchar *)ba.data() + 8);
     qToLittleEndian(cppState, (uchar *)ba.data() + 12);
-    qToLittleEndian(specialButtons, (uchar *)ba.data() + 16);
+    qToLittleEndian(specialButtonsState, (uchar *)ba.data() + 16);
     QUdpSocket().writeDatagram(ba, QHostAddress(ipAddress), 4950);
 }
 
@@ -293,42 +299,42 @@ public:
         connect(homeButton, &QPushButton::pressed, this,
                 [](void)
         {
-           specialButtons |= 1;
+           interfaceButtons |= 1;
            sendFrame();
         });
 
         connect(homeButton, &QPushButton::released, this,
                 [](void)
         {
-           specialButtons &= ~1;
+           interfaceButtons &= ~1;
            sendFrame();
         });
 
         connect(powerButton, &QPushButton::pressed, this,
                 [](void)
         {
-           specialButtons |= 2;
+           interfaceButtons |= 2;
            sendFrame();
         });
 
         connect(powerButton, &QPushButton::released, this,
                 [](void)
         {
-           specialButtons &= ~2;
+           interfaceButtons &= ~2;
            sendFrame();
         });
 
         connect(longPowerButton, &QPushButton::pressed, this,
                 [](void)
         {
-           specialButtons |= 4;
+           interfaceButtons |= 4;
            sendFrame();
         });
 
         connect(longPowerButton, &QPushButton::released, this,
                 [](void)
         {
-           specialButtons &= ~4;
+           interfaceButtons &= ~4;
            sendFrame();
         });
 
@@ -355,7 +361,7 @@ public:
     {
         lx = ly = rx = ry = 0.0;
         buttons = 0;
-        specialButtons = 0;
+        interfaceButtons = 0;
         touchScreenPressed = false;
         sendFrame();
         delete touchScreen;
