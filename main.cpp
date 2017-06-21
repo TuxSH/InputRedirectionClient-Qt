@@ -294,8 +294,6 @@ private:
 public:
     Widget(QWidget *parent = nullptr) : QWidget(parent)
     {
-        setWindowFlags(Qt::MSWindowsFixedSizeDialogHint);
-
         layout = new QVBoxLayout(this);
 
         addrLineEdit = new QLineEdit(this);
