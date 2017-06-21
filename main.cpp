@@ -76,8 +76,8 @@ void sendFrame(void)
     };
 
     static const QGamepadManager::GamepadButton speButtons[] = {
-        QGamepadManager::ButtonR3,
         QGamepadManager::ButtonL3,
+        QGamepadManager::ButtonR3,
         QGamepadManager::ButtonGuide,
     };
 
