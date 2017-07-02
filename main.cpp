@@ -41,6 +41,7 @@ QString ipAddress;
 int yAxisMultiplier = 1;
 bool abInverse = false;
 bool xyInverse = false;
+bool rlr2l2Inverse = false;
 
 bool touchScreenPressed;
 QPoint touchScreenPosition;
@@ -49,22 +50,29 @@ QSettings settings("TuxSH", "InputRedirectionClient-Qt");
 
 void sendFrame(void)
 {
+    // 0-2
     static const QGamepadManager::GamepadButton hidButtonsAB[] = {
         QGamepadManager::ButtonA,
         QGamepadManager::ButtonB,
     };
-
-    static const QGamepadManager::GamepadButton hidButtonsMiddle[] = {
+    // 2-4
+    static const QGamepadManager::GamepadButton hidButtonsSelectStart[] = {
         QGamepadManager::ButtonSelect,
         QGamepadManager::ButtonStart,
+    };
+    // 4-8
+    static const QGamepadManager::GamepadButton hidButtonsDPad[] = {
         QGamepadManager::ButtonRight,
         QGamepadManager::ButtonLeft,
         QGamepadManager::ButtonUp,
         QGamepadManager::ButtonDown,
+    };
+    // 8-10
+    static const QGamepadManager::GamepadButton hidButtonsRL[] = {
         QGamepadManager::ButtonR1,
         QGamepadManager::ButtonL1,
     };
-
+    // 10-12
     static const QGamepadManager::GamepadButton hidButtonsXY[] = {
         QGamepadManager::ButtonX,
         QGamepadManager::ButtonY,
@@ -99,10 +107,30 @@ void sendFrame(void)
         }
     }
 
-    for(u32 i = 2; i < 10; i++)
+    for(u32 i = 2; i < 4; i++)
     {
-        if(buttons & (1 << hidButtonsMiddle[i-2]))
+        if(buttons & (1 << hidButtonsSelectStart[i-2]))
             hidPad &= ~(1 << i);
+    }
+
+    for(u32 i = 4; i < 8; i++)
+    {
+        if(buttons & (1 << hidButtonsDPad[i-4]))
+            hidPad &= ~(1 << i);
+    }
+
+    if(!rlr2l2Inverse) {
+        for(u32 i = 8; i < 10; i++)
+        {
+            if(buttons & (1 << hidButtonsRL[i-8]))
+                hidPad &= ~(1 << i);
+        }
+    } else {
+        for(u32 i = 8; i < 10; i++)
+        {
+            if(buttons & (1 << irButtons[i-8]))
+                hidPad &= ~(1 << i);
+        }
     }
 
     if(!xyInverse)
@@ -123,10 +151,18 @@ void sendFrame(void)
     }
 
     u32 irButtonsState = 0;
-    for(u32 i = 0; i < 2; i++)
-    {
-        if(buttons & (1 << irButtons[i]))
-            irButtonsState |= 1 << (i + 1);
+    if(!rlr2l2Inverse) {
+        for(u32 i = 0; i < 2; i++)
+        {
+            if(buttons & (1 << irButtons[i]))
+                irButtonsState |= 1 << (i + 1);
+        }
+    } else {
+        for(u32 i = 0; i < 2; i++)
+        {
+            if(buttons & (1 << hidButtonsRL[i]))
+                irButtonsState |= 1 << (i + 1);
+        }
     }
 
     u32 specialButtonsState = 0;
@@ -288,7 +324,7 @@ private:
     QVBoxLayout *layout;
     QFormLayout *formLayout;
     QLineEdit *addrLineEdit;
-    QCheckBox *invertYCheckbox, *invertABCheckbox, *invertXYCheckbox;
+    QCheckBox *invertYCheckbox, *invertABCheckbox, *invertXYCheckbox, *invertRLR2L2Checkbox;
     QPushButton *homeButton, *powerButton, *longPowerButton;
     TouchScreen *touchScreen;
 public:
@@ -302,12 +338,14 @@ public:
         invertYCheckbox = new QCheckBox(this);
         invertABCheckbox = new QCheckBox(this);
         invertXYCheckbox = new QCheckBox(this);
+        invertRLR2L2Checkbox = new QCheckBox(this);
         formLayout = new QFormLayout;
 
         formLayout->addRow(tr("IP &address"), addrLineEdit);
         formLayout->addRow(tr("&Invert Y axis"), invertYCheckbox);
         formLayout->addRow(tr("Invert A<->&B"), invertABCheckbox);
         formLayout->addRow(tr("Invert X<->&Y"), invertXYCheckbox);
+        formLayout->addRow(tr("Invert Bumpers<->&Triggers"), invertRLR2L2Checkbox);
 
         homeButton = new QPushButton(tr("&HOME"), this);
         powerButton = new QPushButton(tr("&POWER"), this);
@@ -376,6 +414,23 @@ public:
             }
         });
 
+        connect(invertRLR2L2Checkbox, &QCheckBox::stateChanged, this,
+                [](int state)
+        {
+            switch(state)
+            {
+                case Qt::Unchecked:
+                    rlr2l2Inverse = false;
+                    settings.setValue("invertRLR2L2", false);
+                    break;
+                case Qt::Checked:
+                    rlr2l2Inverse = true;
+                    settings.setValue("invertRLR2L2", true);
+                    break;
+                default: break;
+            }
+        });
+
         connect(homeButton, &QPushButton::pressed, this,
                 [](void)
         {
@@ -425,6 +480,7 @@ public:
         invertYCheckbox->setChecked(settings.value("invertY", false).toBool());
         invertABCheckbox->setChecked(settings.value("invertAB", false).toBool());
         invertXYCheckbox->setChecked(settings.value("invertXY", false).toBool());
+        invertRLR2L2Checkbox->setChecked(settings.value("invertRLR2L2", false).toBool());
     }
 
     void show(void)
