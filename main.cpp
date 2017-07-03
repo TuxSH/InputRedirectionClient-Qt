@@ -19,6 +19,7 @@
 #include <QMouseEvent>
 #include <QCloseEvent>
 #include <QSettings>
+#include <QComboBox>
 
 #include <algorithm>
 #include <cmath>
@@ -47,40 +48,44 @@ QPoint touchScreenPosition;
 
 QSettings settings("TuxSH", "InputRedirectionClient-Qt");
 
+QGamepadManager::GamepadButton homeButton = QGamepadManager::ButtonInvalid;
+QGamepadManager::GamepadButton powerButton = QGamepadManager::ButtonInvalid;
+QGamepadManager::GamepadButton powerLongButton = QGamepadManager::ButtonInvalid;
+
+QGamepadManager::GamepadButton hidButtonsAB[] = {
+    QGamepadManager::ButtonA,
+    QGamepadManager::ButtonB,
+};
+
+QGamepadManager::GamepadButton hidButtonsMiddle[] = {
+    QGamepadManager::ButtonSelect,
+    QGamepadManager::ButtonStart,
+    QGamepadManager::ButtonRight,
+    QGamepadManager::ButtonLeft,
+    QGamepadManager::ButtonUp,
+    QGamepadManager::ButtonDown,
+    QGamepadManager::ButtonR1,
+    QGamepadManager::ButtonL1,
+};
+
+QGamepadManager::GamepadButton hidButtonsXY[] = {
+    QGamepadManager::ButtonX,
+    QGamepadManager::ButtonY,
+};
+
+QGamepadManager::GamepadButton irButtons[] = {
+    QGamepadManager::ButtonR2,
+    QGamepadManager::ButtonL2,
+};
+
+/*QGamepadManager::GamepadButton speButtons[] = {
+    QGamepadManager::ButtonL3,
+    QGamepadManager::ButtonR3,
+    QGamepadManager::ButtonGuide,
+};*/
+
 void sendFrame(void)
 {
-    static const QGamepadManager::GamepadButton hidButtonsAB[] = {
-        QGamepadManager::ButtonA,
-        QGamepadManager::ButtonB,
-    };
-
-    static const QGamepadManager::GamepadButton hidButtonsMiddle[] = {
-        QGamepadManager::ButtonSelect,
-        QGamepadManager::ButtonStart,
-        QGamepadManager::ButtonRight,
-        QGamepadManager::ButtonLeft,
-        QGamepadManager::ButtonUp,
-        QGamepadManager::ButtonDown,
-        QGamepadManager::ButtonR1,
-        QGamepadManager::ButtonL1,
-    };
-
-    static const QGamepadManager::GamepadButton hidButtonsXY[] = {
-        QGamepadManager::ButtonX,
-        QGamepadManager::ButtonY,
-    };
-
-    static const QGamepadManager::GamepadButton irButtons[] = {
-        QGamepadManager::ButtonR2,
-        QGamepadManager::ButtonL2,
-    };
-
-    static const QGamepadManager::GamepadButton speButtons[] = {
-        QGamepadManager::ButtonL3,
-        QGamepadManager::ButtonR3,
-        QGamepadManager::ButtonGuide,
-    };
-
     u32 hidPad = 0xfff;
     if(!abInverse)
     {
@@ -125,18 +130,18 @@ void sendFrame(void)
     u32 irButtonsState = 0;
     for(u32 i = 0; i < 2; i++)
     {
-        if(buttons & (1 << irButtons[i]))
-            irButtonsState |= 1 << (i + 1);
+            if(buttons & (1 << irButtons[i]))
+                irButtonsState |= 1 << (i + 1);
     }
 
-    u32 specialButtonsState = 0;
+    /*u32 specialButtonsState = 0;
     for(u32 i = 0; i < 3; i++)
     {
 
         if(buttons & (1 << speButtons[i]))
             specialButtonsState |= 1 << i;
     }
-    specialButtonsState |= interfaceButtons;
+    specialButtonsState |= interfaceButtons;*/
 
     u32 touchScreenState = 0x2000000;
     u32 circlePadState = 0x7ff7ff;
@@ -175,7 +180,7 @@ void sendFrame(void)
     qToLittleEndian(touchScreenState, (uchar *)ba.data() + 4);
     qToLittleEndian(circlePadState, (uchar *)ba.data() + 8);
     qToLittleEndian(cppState, (uchar *)ba.data() + 12);
-    qToLittleEndian(specialButtonsState, (uchar *)ba.data() + 16);
+    qToLittleEndian(interfaceButtons, (uchar *)ba.data() + 16);
     QUdpSocket().writeDatagram(ba, QHostAddress(ipAddress), 4950);
 }
 
@@ -189,6 +194,20 @@ struct GamepadMonitor : public QObject {
             (void)deviceId;
             (void)value;
             buttons |= QGamepadManager::GamepadButtons(1 << button);
+
+            if (button == homeButton)
+            {
+                interfaceButtons |= 1;
+            }
+            if (button == powerButton)
+            {
+                interfaceButtons |= 2;
+            }
+            if (button == powerLongButton)
+            {
+                interfaceButtons |= 4;
+            }
+
             sendFrame();
         });
 
@@ -197,6 +216,20 @@ struct GamepadMonitor : public QObject {
         {
             (void)deviceId;
             buttons &= QGamepadManager::GamepadButtons(~(1 << button));
+
+            if (button == homeButton)
+            {
+                interfaceButtons &= ~1;
+            }
+            if (button == powerButton)
+            {
+                interfaceButtons &= ~2;
+            }
+            if (button == powerLongButton)
+            {
+                interfaceButtons &= ~4;
+            }
+
             sendFrame();
         });
         connect(QGamepadManager::instance(), &QGamepadManager::gamepadAxisEvent, this,
@@ -281,6 +314,130 @@ struct FrameTimer : public QTimer {
     }
 };
 
+struct RemapConfig : public QDialog {
+private:
+    QVBoxLayout *layout;
+    QFormLayout *formLayout;
+    QComboBox *comboBoxA, *comboBoxB, *comboBoxX, *comboBoxY, *comboBoxL, *comboBoxR,
+        *comboBoxUp, *comboBoxDown, *comboBoxLeft, *comboBoxRight, *comboBoxStart, *comboBoxSelect,
+        *comboBoxZL, *comboBoxZR, *comboBoxHome, *comboBoxPower, *comboBoxPowerLong, *comboBoxTouchA, *comboBoxTouchB;
+    QLineEdit *primTouchButtonXEdit, *primTouchButtonYEdit,
+        *altTouchButtonXEdit, *altTouchButtonYEdit;
+    QPushButton *saveButton, *closeButton;
+    QComboBox* populateFields(QString button)
+    {
+        QComboBox *comboBox = new QComboBox();
+        comboBox->addItem("A", QGamepadManager::ButtonA);
+        comboBox->addItem("B", QGamepadManager::ButtonB);
+        comboBox->addItem("X", QGamepadManager::ButtonX);
+        comboBox->addItem("Y", QGamepadManager::ButtonY);
+        comboBox->addItem("Right", QGamepadManager::ButtonRight);
+        comboBox->addItem("Left", QGamepadManager::ButtonLeft);
+        comboBox->addItem("Up", QGamepadManager::ButtonUp);
+        comboBox->addItem("Down", QGamepadManager::ButtonDown);
+        comboBox->addItem("RB", QGamepadManager::ButtonR1);
+        comboBox->addItem("LB", QGamepadManager::ButtonL1);
+        comboBox->addItem("Select", QGamepadManager::ButtonSelect);
+        comboBox->addItem("Start", QGamepadManager::ButtonStart);
+        comboBox->addItem("RT", QGamepadManager::ButtonR2);
+        comboBox->addItem("LT", QGamepadManager::ButtonL2);
+        comboBox->addItem("L3", QGamepadManager::ButtonL3);
+        comboBox->addItem("R3", QGamepadManager::ButtonR3);
+        comboBox->addItem("Guide", QGamepadManager::ButtonGuide);
+        comboBox->addItem("None", QGamepadManager::ButtonInvalid);
+
+        int index = comboBox->findText(button);
+        comboBox->setCurrentIndex(index);
+
+        return comboBox;
+    }
+
+public:
+    RemapConfig(QWidget *parent = nullptr) : QDialog(parent)
+    {
+        this->setFixedSize(TOUCH_SCREEN_WIDTH, 550);
+        this->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint);
+        this->setWindowTitle(tr("InputRedirectionClient-Qt - Button Config"));
+
+        layout = new QVBoxLayout(this);
+
+        comboBoxA = populateFields("A");
+        comboBoxB = populateFields("B");
+        comboBoxX = populateFields("X");
+        comboBoxY = populateFields("Y");
+        comboBoxUp = populateFields("Up");
+        comboBoxDown = populateFields("Down");
+        comboBoxLeft = populateFields("Left");
+        comboBoxRight = populateFields("Right");
+        comboBoxL = populateFields("LB");
+        comboBoxR = populateFields("RB");
+        comboBoxSelect = populateFields("Select");
+        comboBoxStart = populateFields("Start");
+        comboBoxZL = populateFields("LT");
+        comboBoxZR = populateFields("RT");
+        comboBoxHome = populateFields("None");
+        comboBoxPower = populateFields("None");
+        comboBoxPowerLong = populateFields("None");
+
+        formLayout = new QFormLayout;
+
+        formLayout->addRow(tr("A Button"), comboBoxA);
+        formLayout->addRow(tr("B Button"), comboBoxB);
+        formLayout->addRow(tr("X Button"), comboBoxX);
+        formLayout->addRow(tr("Y Button"), comboBoxY);
+        formLayout->addRow(tr("DPad-Up"), comboBoxUp);
+        formLayout->addRow(tr("DPad-Down"), comboBoxDown);
+        formLayout->addRow(tr("DPad-Left"), comboBoxLeft);
+        formLayout->addRow(tr("DPad-Right"), comboBoxRight);
+        formLayout->addRow(tr("L Button"), comboBoxL);
+        formLayout->addRow(tr("R Button"), comboBoxR);
+        formLayout->addRow(tr("Select"), comboBoxSelect);
+        formLayout->addRow(tr("Start"), comboBoxStart);
+        formLayout->addRow(tr("Home"), comboBoxHome);
+        formLayout->addRow(tr("Power"), comboBoxPower);
+        formLayout->addRow(tr("Power-Long"), comboBoxPowerLong);
+        formLayout->addRow(tr("ZL Button"), comboBoxZL);
+        formLayout->addRow(tr("ZR Button"), comboBoxZR);
+
+        saveButton = new QPushButton(tr("&SAVE"), this);
+        closeButton = new QPushButton(tr("&CANCEL"), this);
+
+        layout->addLayout(formLayout);
+        layout->addWidget(saveButton);
+        layout->addWidget(closeButton);
+
+        connect(saveButton, &QPushButton::pressed, this,
+                [this](void)
+        {
+            hidButtonsAB[0] = static_cast<QGamepadManager::GamepadButton>(comboBoxA->itemData(comboBoxA->currentIndex()).toInt());
+            hidButtonsAB[1] = static_cast<QGamepadManager::GamepadButton>(comboBoxB->itemData(comboBoxB->currentIndex()).toInt());
+
+            hidButtonsMiddle[0] = static_cast<QGamepadManager::GamepadButton>(comboBoxSelect->itemData(comboBoxSelect->currentIndex()).toInt());
+            hidButtonsMiddle[1] = static_cast<QGamepadManager::GamepadButton>(comboBoxStart->itemData(comboBoxStart->currentIndex()).toInt());
+            hidButtonsMiddle[2] = static_cast<QGamepadManager::GamepadButton>(comboBoxRight->itemData(comboBoxRight->currentIndex()).toInt());
+            hidButtonsMiddle[3] = static_cast<QGamepadManager::GamepadButton>(comboBoxLeft->itemData(comboBoxLeft->currentIndex()).toInt());
+            hidButtonsMiddle[4] = static_cast<QGamepadManager::GamepadButton>(comboBoxUp->itemData(comboBoxUp->currentIndex()).toInt());
+            hidButtonsMiddle[5] = static_cast<QGamepadManager::GamepadButton>(comboBoxDown->itemData(comboBoxDown->currentIndex()).toInt());
+            hidButtonsMiddle[6] = static_cast<QGamepadManager::GamepadButton>(comboBoxR->itemData(comboBoxR->currentIndex()).toInt());
+            hidButtonsMiddle[7] = static_cast<QGamepadManager::GamepadButton>(comboBoxL->itemData(comboBoxL->currentIndex()).toInt());
+
+            hidButtonsXY[0] = static_cast<QGamepadManager::GamepadButton>(comboBoxX->itemData(comboBoxX->currentIndex()).toInt());
+            hidButtonsXY[1] = static_cast<QGamepadManager::GamepadButton>(comboBoxY->itemData(comboBoxY->currentIndex()).toInt());
+
+            irButtons[0] = static_cast<QGamepadManager::GamepadButton>(comboBoxZR->itemData(comboBoxZR->currentIndex()).toInt());
+            irButtons[1] = static_cast<QGamepadManager::GamepadButton>(comboBoxZL->itemData(comboBoxZL->currentIndex()).toInt());
+
+            powerButton = static_cast<QGamepadManager::GamepadButton>(comboBoxPower->itemData(comboBoxPower->currentIndex()).toInt());
+            powerLongButton = static_cast<QGamepadManager::GamepadButton>(comboBoxPowerLong->itemData(comboBoxPowerLong->currentIndex()).toInt());
+            homeButton = static_cast<QGamepadManager::GamepadButton>(comboBoxHome->itemData(comboBoxHome->currentIndex()).toInt());
+        });
+        connect(closeButton, &QPushButton::pressed, this,
+                [this](void)
+        {
+           this->hide();
+        });
+    }
+};
 
 class Widget : public QWidget
 {
@@ -289,8 +446,9 @@ private:
     QFormLayout *formLayout;
     QLineEdit *addrLineEdit;
     QCheckBox *invertYCheckbox, *invertABCheckbox, *invertXYCheckbox;
-    QPushButton *homeButton, *powerButton, *longPowerButton;
+    QPushButton *homeButton, *powerButton, *longPowerButton, *remapConfigButton;
     TouchScreen *touchScreen;
+    RemapConfig *remapConfig;
 public:
     Widget(QWidget *parent = nullptr) : QWidget(parent)
     {
@@ -308,6 +466,7 @@ public:
         formLayout->addRow(tr("&Invert Y axis"), invertYCheckbox);
         formLayout->addRow(tr("Invert A<->&B"), invertABCheckbox);
         formLayout->addRow(tr("Invert X<->&Y"), invertXYCheckbox);
+        remapConfigButton = new QPushButton(tr("BUTTON &CONFIG"), this);
 
         homeButton = new QPushButton(tr("&HOME"), this);
         powerButton = new QPushButton(tr("&POWER"), this);
@@ -317,6 +476,7 @@ public:
         layout->addWidget(homeButton);
         layout->addWidget(powerButton);
         layout->addWidget(longPowerButton);
+        layout->addWidget(remapConfigButton);
 
         connect(addrLineEdit, &QLineEdit::textChanged, this,
                 [](const QString &text)
@@ -418,7 +578,14 @@ public:
            sendFrame();
         });
 
+        connect(remapConfigButton, &QPushButton::released, this,
+                [this](void)
+        {
+           remapConfig->show();
+        });
+
         touchScreen = new TouchScreen(nullptr);
+        remapConfig = new RemapConfig(nullptr);
         this->setWindowTitle(tr("InputRedirectionClient-Qt"));
 
         addrLineEdit->setText(settings.value("ipAddress", "").toString());
@@ -431,11 +598,13 @@ public:
     {
         QWidget::show();
         touchScreen->show();
+        remapConfig->hide();
     }
 
     void closeEvent(QCloseEvent *ev)
     {
         touchScreen->close();
+        remapConfig->close();
         ev->accept();
     }
 
@@ -447,6 +616,7 @@ public:
         touchScreenPressed = false;
         sendFrame();
         delete touchScreen;
+        delete remapConfig;
     }
 
 };
