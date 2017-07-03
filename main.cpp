@@ -40,6 +40,7 @@ QGamepadManager::GamepadButtons buttons = 0;
 u32 interfaceButtons = 0;
 QString ipAddress;
 int yAxisMultiplier = 1;
+int touchButton1X, touchButton1Y, touchButton2X, touchButton2Y;
 bool abInverse = false;
 bool xyInverse = false;
 
@@ -51,6 +52,9 @@ QSettings settings("TuxSH", "InputRedirectionClient-Qt");
 QGamepadManager::GamepadButton homeButton = QGamepadManager::ButtonInvalid;
 QGamepadManager::GamepadButton powerButton = QGamepadManager::ButtonInvalid;
 QGamepadManager::GamepadButton powerLongButton = QGamepadManager::ButtonInvalid;
+
+QGamepadManager::GamepadButton touchButton1 = QGamepadManager::ButtonInvalid;
+QGamepadManager::GamepadButton touchButton2 = QGamepadManager::ButtonInvalid;
 
 QGamepadManager::GamepadButton hidButtonsAB[] = {
     QGamepadManager::ButtonA,
@@ -208,6 +212,18 @@ struct GamepadMonitor : public QObject {
                 interfaceButtons |= 4;
             }
 
+            if (button == touchButton1)
+            {
+                touchScreenPressed = true;
+                touchScreenPosition = QPoint(touchButton1X, touchButton1Y);
+            }
+            if (button == touchButton2)
+            {
+                touchScreenPressed = true;
+                touchScreenPosition = QPoint(touchButton2X, touchButton2Y);
+            }
+
+
             sendFrame();
         });
 
@@ -228,6 +244,11 @@ struct GamepadMonitor : public QObject {
             if (button == powerLongButton)
             {
                 interfaceButtons &= ~4;
+            }
+
+            if ((button == touchButton1) || (button == touchButton2))
+            {
+                touchScreenPressed = false;
             }
 
             sendFrame();
@@ -320,9 +341,9 @@ private:
     QFormLayout *formLayout;
     QComboBox *comboBoxA, *comboBoxB, *comboBoxX, *comboBoxY, *comboBoxL, *comboBoxR,
         *comboBoxUp, *comboBoxDown, *comboBoxLeft, *comboBoxRight, *comboBoxStart, *comboBoxSelect,
-        *comboBoxZL, *comboBoxZR, *comboBoxHome, *comboBoxPower, *comboBoxPowerLong, *comboBoxTouchA, *comboBoxTouchB;
-    QLineEdit *primTouchButtonXEdit, *primTouchButtonYEdit,
-        *altTouchButtonXEdit, *altTouchButtonYEdit;
+        *comboBoxZL, *comboBoxZR, *comboBoxHome, *comboBoxPower, *comboBoxPowerLong, *comboBoxTouch1, *comboBoxTouch2;
+    QLineEdit *touchButton1XEdit, *touchButton1YEdit,
+        *touchButton2XEdit, *touchButton2YEdit;
     QPushButton *saveButton, *closeButton;
     QComboBox* populateFields(QString button)
     {
@@ -355,7 +376,7 @@ private:
 public:
     RemapConfig(QWidget *parent = nullptr) : QDialog(parent)
     {
-        this->setFixedSize(TOUCH_SCREEN_WIDTH, 550);
+        this->setFixedSize(TOUCH_SCREEN_WIDTH, 700);
         this->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint);
         this->setWindowTitle(tr("InputRedirectionClient-Qt - Button Config"));
 
@@ -378,6 +399,18 @@ public:
         comboBoxHome = populateFields("None");
         comboBoxPower = populateFields("None");
         comboBoxPowerLong = populateFields("None");
+        comboBoxTouch1 = populateFields("None");
+        comboBoxTouch2 = populateFields("None");
+
+        touchButton1XEdit = new QLineEdit(this);
+        touchButton1XEdit->setClearButtonEnabled(true);
+        touchButton1YEdit = new QLineEdit(this);
+        touchButton1YEdit->setClearButtonEnabled(true);
+
+        touchButton2XEdit = new QLineEdit(this);
+        touchButton2XEdit->setClearButtonEnabled(true);
+        touchButton2YEdit = new QLineEdit(this);
+        touchButton2YEdit->setClearButtonEnabled(true);
 
         formLayout = new QFormLayout;
 
@@ -398,6 +431,12 @@ public:
         formLayout->addRow(tr("Power-Long"), comboBoxPowerLong);
         formLayout->addRow(tr("ZL Button"), comboBoxZL);
         formLayout->addRow(tr("ZR Button"), comboBoxZR);
+        formLayout->addRow(tr("Touch Button 1"), comboBoxTouch1);
+        formLayout->addRow(tr("Touch Button X"), touchButton1XEdit);
+        formLayout->addRow(tr("Touch Button Y"), touchButton1YEdit);
+        formLayout->addRow(tr("Touch Button 2"), comboBoxTouch2);
+        formLayout->addRow(tr("Touch Button X"), touchButton2XEdit);
+        formLayout->addRow(tr("Touch Button Y"), touchButton2YEdit);
 
         saveButton = new QPushButton(tr("&SAVE"), this);
         closeButton = new QPushButton(tr("&CANCEL"), this);
@@ -405,6 +444,31 @@ public:
         layout->addLayout(formLayout);
         layout->addWidget(saveButton);
         layout->addWidget(closeButton);
+
+        connect(touchButton1XEdit, &QLineEdit::textChanged, this,
+                [](const QString &text)
+        {
+            touchButton1X = text.toUInt();
+            settings.setValue("touchButton1X", text);
+        });
+        connect(touchButton1YEdit, &QLineEdit::textChanged, this,
+                [](const QString &text)
+        {
+            touchButton1Y = text.toUInt();
+            settings.setValue("touchButton1Y", text);
+        });
+        connect(touchButton2XEdit, &QLineEdit::textChanged, this,
+                [](const QString &text)
+        {
+            touchButton2X = text.toUInt();
+            settings.setValue("touchButton2X", text);
+        });
+        connect(touchButton2YEdit, &QLineEdit::textChanged, this,
+                [](const QString &text)
+        {
+            touchButton2Y = text.toUInt();
+            settings.setValue("touchButton2Y", text);
+        });
 
         connect(saveButton, &QPushButton::pressed, this,
                 [this](void)
@@ -430,6 +494,10 @@ public:
             powerButton = static_cast<QGamepadManager::GamepadButton>(comboBoxPower->itemData(comboBoxPower->currentIndex()).toInt());
             powerLongButton = static_cast<QGamepadManager::GamepadButton>(comboBoxPowerLong->itemData(comboBoxPowerLong->currentIndex()).toInt());
             homeButton = static_cast<QGamepadManager::GamepadButton>(comboBoxHome->itemData(comboBoxHome->currentIndex()).toInt());
+
+            touchButton1 = static_cast<QGamepadManager::GamepadButton>(comboBoxTouch1->itemData(comboBoxTouch1->currentIndex()).toInt());
+            touchButton2 = static_cast<QGamepadManager::GamepadButton>(comboBoxTouch2->itemData(comboBoxTouch2->currentIndex()).toInt());
+
         });
         connect(closeButton, &QPushButton::pressed, this,
                 [this](void)
