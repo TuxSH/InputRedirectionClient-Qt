@@ -49,37 +49,46 @@ QPoint touchScreenPosition;
 
 QSettings settings("TuxSH", "InputRedirectionClient-Qt");
 
-QGamepadManager::GamepadButton homeButton = QGamepadManager::ButtonInvalid;
-QGamepadManager::GamepadButton powerButton = QGamepadManager::ButtonInvalid;
-QGamepadManager::GamepadButton powerLongButton = QGamepadManager::ButtonInvalid;
+QGamepadManager::GamepadButton variantToButton(QVariant variant)
+{
+    QGamepadManager::GamepadButton button;
 
-QGamepadManager::GamepadButton touchButton1 = QGamepadManager::ButtonInvalid;
-QGamepadManager::GamepadButton touchButton2 = QGamepadManager::ButtonInvalid;
+    button = static_cast<QGamepadManager::GamepadButton>(variant.toInt());
+
+    return button;
+}
+
+QGamepadManager::GamepadButton homeButton = variantToButton(settings.value("ButtonHome", QGamepadManager::ButtonInvalid));
+QGamepadManager::GamepadButton powerButton = variantToButton(settings.value("ButtonPower", QGamepadManager::ButtonInvalid));
+QGamepadManager::GamepadButton powerLongButton = variantToButton(settings.value("ButtonPowerLong", QGamepadManager::ButtonInvalid));
+
+QGamepadManager::GamepadButton touchButton1 = variantToButton(settings.value("ButtonT1", QGamepadManager::ButtonInvalid));
+QGamepadManager::GamepadButton touchButton2 = variantToButton(settings.value("ButtonT2", QGamepadManager::ButtonInvalid));
 
 QGamepadManager::GamepadButton hidButtonsAB[] = {
-    QGamepadManager::ButtonA,
-    QGamepadManager::ButtonB,
+    variantToButton(settings.value("ButtonA", QGamepadManager::ButtonA)),
+    variantToButton(settings.value("ButtonB", QGamepadManager::ButtonB)),
 };
 
 QGamepadManager::GamepadButton hidButtonsMiddle[] = {
-    QGamepadManager::ButtonSelect,
-    QGamepadManager::ButtonStart,
-    QGamepadManager::ButtonRight,
-    QGamepadManager::ButtonLeft,
-    QGamepadManager::ButtonUp,
-    QGamepadManager::ButtonDown,
-    QGamepadManager::ButtonR1,
-    QGamepadManager::ButtonL1,
+    variantToButton(settings.value("ButtonSelect", QGamepadManager::ButtonSelect)),
+    variantToButton(settings.value("ButtonStart", QGamepadManager::ButtonStart)),
+    variantToButton(settings.value("ButtonRight", QGamepadManager::ButtonRight)),
+    variantToButton(settings.value("ButtonLeft", QGamepadManager::ButtonLeft)),
+    variantToButton(settings.value("ButtonUp", QGamepadManager::ButtonUp)),
+    variantToButton(settings.value("ButtonDown", QGamepadManager::ButtonDown)),
+    variantToButton(settings.value("ButtonR", QGamepadManager::ButtonR1)),
+    variantToButton(settings.value("ButtonL", QGamepadManager::ButtonL1)),
 };
 
 QGamepadManager::GamepadButton hidButtonsXY[] = {
-    QGamepadManager::ButtonX,
-    QGamepadManager::ButtonY,
+    variantToButton(settings.value("ButtonX", QGamepadManager::ButtonX)),
+    variantToButton(settings.value("ButtonY", QGamepadManager::ButtonY)),
 };
 
 QGamepadManager::GamepadButton irButtons[] = {
-    QGamepadManager::ButtonR2,
-    QGamepadManager::ButtonL2,
+    variantToButton(settings.value("ButtonZR", QGamepadManager::ButtonR2)),
+    variantToButton(settings.value("ButtonZL", QGamepadManager::ButtonL2)),
 };
 
 /*QGamepadManager::GamepadButton speButtons[] = {
@@ -345,13 +354,14 @@ private:
     QLineEdit *touchButton1XEdit, *touchButton1YEdit,
         *touchButton2XEdit, *touchButton2YEdit;
     QPushButton *saveButton, *closeButton;
-    QComboBox* populateFields(QString button)
+
+    QComboBox* populateItems(QGamepadManager::GamepadButton button)
     {
         QComboBox *comboBox = new QComboBox();
-        comboBox->addItem("A", QGamepadManager::ButtonA);
-        comboBox->addItem("B", QGamepadManager::ButtonB);
-        comboBox->addItem("X", QGamepadManager::ButtonX);
-        comboBox->addItem("Y", QGamepadManager::ButtonY);
+        comboBox->addItem("A (bottom)", QGamepadManager::ButtonA);
+        comboBox->addItem("B (right)", QGamepadManager::ButtonB);
+        comboBox->addItem("X (left)", QGamepadManager::ButtonX);
+        comboBox->addItem("Y (top)", QGamepadManager::ButtonY);
         comboBox->addItem("Right", QGamepadManager::ButtonRight);
         comboBox->addItem("Left", QGamepadManager::ButtonLeft);
         comboBox->addItem("Up", QGamepadManager::ButtonUp);
@@ -367,10 +377,19 @@ private:
         comboBox->addItem("Guide", QGamepadManager::ButtonGuide);
         comboBox->addItem("None", QGamepadManager::ButtonInvalid);
 
-        int index = comboBox->findText(button);
+        int index = comboBox->findData(button);
         comboBox->setCurrentIndex(index);
 
         return comboBox;
+    }
+
+    QVariant currentData(QComboBox *comboBox)
+    {
+        QVariant variant;
+
+        variant = comboBox->itemData(comboBox->currentIndex());
+
+        return variant;
     }
 
 public:
@@ -382,35 +401,39 @@ public:
 
         layout = new QVBoxLayout(this);
 
-        comboBoxA = populateFields("A");
-        comboBoxB = populateFields("B");
-        comboBoxX = populateFields("X");
-        comboBoxY = populateFields("Y");
-        comboBoxUp = populateFields("Up");
-        comboBoxDown = populateFields("Down");
-        comboBoxLeft = populateFields("Left");
-        comboBoxRight = populateFields("Right");
-        comboBoxL = populateFields("LB");
-        comboBoxR = populateFields("RB");
-        comboBoxSelect = populateFields("Select");
-        comboBoxStart = populateFields("Start");
-        comboBoxZL = populateFields("LT");
-        comboBoxZR = populateFields("RT");
-        comboBoxHome = populateFields("None");
-        comboBoxPower = populateFields("None");
-        comboBoxPowerLong = populateFields("None");
-        comboBoxTouch1 = populateFields("None");
-        comboBoxTouch2 = populateFields("None");
+        comboBoxA = populateItems(variantToButton(settings.value("ButtonA", QGamepadManager::ButtonA)));
+        comboBoxB = populateItems(variantToButton(settings.value("ButtonB", QGamepadManager::ButtonB)));
+        comboBoxX = populateItems(variantToButton(settings.value("ButtonX", QGamepadManager::ButtonX)));
+        comboBoxY = populateItems(variantToButton(settings.value("ButtonY", QGamepadManager::ButtonY)));
+        comboBoxUp = populateItems(variantToButton(settings.value("ButtonUp", QGamepadManager::ButtonUp)));
+        comboBoxDown = populateItems(variantToButton(settings.value("ButtonDown", QGamepadManager::ButtonDown)));
+        comboBoxLeft = populateItems(variantToButton(settings.value("ButtonLeft", QGamepadManager::ButtonLeft)));
+        comboBoxRight = populateItems(variantToButton(settings.value("ButtonRight", QGamepadManager::ButtonRight)));
+        comboBoxL = populateItems(variantToButton(settings.value("ButtonL", QGamepadManager::ButtonL1)));
+        comboBoxR = populateItems(variantToButton(settings.value("ButtonR", QGamepadManager::ButtonR1)));
+        comboBoxSelect = populateItems(variantToButton(settings.value("ButtonSelect", QGamepadManager::ButtonSelect)));
+        comboBoxStart = populateItems(variantToButton(settings.value("ButtonStart", QGamepadManager::ButtonStart)));
+        comboBoxZL = populateItems(variantToButton(settings.value("ButtonZL", QGamepadManager::ButtonL2)));
+        comboBoxZR = populateItems(variantToButton(settings.value("ButtonZR", QGamepadManager::ButtonR2)));
+        comboBoxHome = populateItems(variantToButton(settings.value("ButtonHome", QGamepadManager::ButtonInvalid)));
+        comboBoxPower = populateItems(variantToButton(settings.value("ButtonPower", QGamepadManager::ButtonInvalid)));
+        comboBoxPowerLong = populateItems(variantToButton(settings.value("ButtonPowerLong", QGamepadManager::ButtonInvalid)));
+        comboBoxTouch1 = populateItems(variantToButton(settings.value("ButtonT1", QGamepadManager::ButtonInvalid)));
+        comboBoxTouch2 = populateItems(variantToButton(settings.value("ButtonT2", QGamepadManager::ButtonInvalid)));
 
         touchButton1XEdit = new QLineEdit(this);
         touchButton1XEdit->setClearButtonEnabled(true);
+        touchButton1XEdit->setText(settings.value("touchButton1X", "0").toString());
         touchButton1YEdit = new QLineEdit(this);
         touchButton1YEdit->setClearButtonEnabled(true);
+        touchButton1YEdit->setText(settings.value("touchButton1Y", "0").toString());
 
         touchButton2XEdit = new QLineEdit(this);
         touchButton2XEdit->setClearButtonEnabled(true);
+        touchButton2XEdit->setText(settings.value("touchButton2X", "0").toString());
         touchButton2YEdit = new QLineEdit(this);
         touchButton2YEdit->setClearButtonEnabled(true);
+        touchButton2YEdit->setText(settings.value("touchButton2Y", "0").toString());
 
         formLayout = new QFormLayout;
 
@@ -473,30 +496,68 @@ public:
         connect(saveButton, &QPushButton::pressed, this,
                 [this](void)
         {
-            hidButtonsAB[0] = static_cast<QGamepadManager::GamepadButton>(comboBoxA->itemData(comboBoxA->currentIndex()).toInt());
-            hidButtonsAB[1] = static_cast<QGamepadManager::GamepadButton>(comboBoxB->itemData(comboBoxB->currentIndex()).toInt());
+            QGamepadManager::GamepadButton a = variantToButton(currentData(comboBoxA));
+            hidButtonsAB[0] = a;
+            settings.setValue("ButtonA", a);
+            QGamepadManager::GamepadButton b = variantToButton(currentData(comboBoxB));
+            hidButtonsAB[1] = b;
+            settings.setValue("ButtonB", b);
 
-            hidButtonsMiddle[0] = static_cast<QGamepadManager::GamepadButton>(comboBoxSelect->itemData(comboBoxSelect->currentIndex()).toInt());
-            hidButtonsMiddle[1] = static_cast<QGamepadManager::GamepadButton>(comboBoxStart->itemData(comboBoxStart->currentIndex()).toInt());
-            hidButtonsMiddle[2] = static_cast<QGamepadManager::GamepadButton>(comboBoxRight->itemData(comboBoxRight->currentIndex()).toInt());
-            hidButtonsMiddle[3] = static_cast<QGamepadManager::GamepadButton>(comboBoxLeft->itemData(comboBoxLeft->currentIndex()).toInt());
-            hidButtonsMiddle[4] = static_cast<QGamepadManager::GamepadButton>(comboBoxUp->itemData(comboBoxUp->currentIndex()).toInt());
-            hidButtonsMiddle[5] = static_cast<QGamepadManager::GamepadButton>(comboBoxDown->itemData(comboBoxDown->currentIndex()).toInt());
-            hidButtonsMiddle[6] = static_cast<QGamepadManager::GamepadButton>(comboBoxR->itemData(comboBoxR->currentIndex()).toInt());
-            hidButtonsMiddle[7] = static_cast<QGamepadManager::GamepadButton>(comboBoxL->itemData(comboBoxL->currentIndex()).toInt());
+            QGamepadManager::GamepadButton select = variantToButton(currentData(comboBoxSelect));
+            hidButtonsMiddle[0] = select;
+            settings.setValue("ButtonSelect", select);
+            QGamepadManager::GamepadButton start = variantToButton(currentData(comboBoxStart));
+            hidButtonsMiddle[1] = start;
+            settings.setValue("ButtonStart", start);
+            QGamepadManager::GamepadButton right = variantToButton(currentData(comboBoxRight));
+            hidButtonsMiddle[2] = right;
+            settings.setValue("ButtonRight", right);
+            QGamepadManager::GamepadButton left = variantToButton(currentData(comboBoxLeft));
+            hidButtonsMiddle[3] = left;
+            settings.setValue("ButtonLeft", left);
+            QGamepadManager::GamepadButton up = variantToButton(currentData(comboBoxUp));
+            hidButtonsMiddle[4] = up;
+            settings.setValue("ButtonUp", up);
+            QGamepadManager::GamepadButton down = variantToButton(currentData(comboBoxDown));
+            hidButtonsMiddle[5] = down;
+            settings.setValue("ButtonDown", down);
+            QGamepadManager::GamepadButton r = variantToButton(currentData(comboBoxR));
+            hidButtonsMiddle[6] = r;
+            settings.setValue("ButtonR", r);
+            QGamepadManager::GamepadButton l = variantToButton(currentData(comboBoxL));
+            hidButtonsMiddle[7] = l;
+            settings.setValue("ButtonL", l);
 
-            hidButtonsXY[0] = static_cast<QGamepadManager::GamepadButton>(comboBoxX->itemData(comboBoxX->currentIndex()).toInt());
-            hidButtonsXY[1] = static_cast<QGamepadManager::GamepadButton>(comboBoxY->itemData(comboBoxY->currentIndex()).toInt());
+            QGamepadManager::GamepadButton x = variantToButton(currentData(comboBoxX));
+            hidButtonsXY[0] = x;
+            settings.setValue("ButtonX", x);
+            QGamepadManager::GamepadButton y = variantToButton(currentData(comboBoxY));
+            hidButtonsXY[1] = y;
+            settings.setValue("ButtonY", y);
 
-            irButtons[0] = static_cast<QGamepadManager::GamepadButton>(comboBoxZR->itemData(comboBoxZR->currentIndex()).toInt());
-            irButtons[1] = static_cast<QGamepadManager::GamepadButton>(comboBoxZL->itemData(comboBoxZL->currentIndex()).toInt());
+            QGamepadManager::GamepadButton zr = variantToButton(currentData(comboBoxZR));
+            irButtons[0] = zr;
+            settings.setValue("ButtonZR", zr);
+            QGamepadManager::GamepadButton zl = variantToButton(currentData(comboBoxZL));
+            irButtons[1] = zl;
+            settings.setValue("ButtonZL", zl);
 
-            powerButton = static_cast<QGamepadManager::GamepadButton>(comboBoxPower->itemData(comboBoxPower->currentIndex()).toInt());
-            powerLongButton = static_cast<QGamepadManager::GamepadButton>(comboBoxPowerLong->itemData(comboBoxPowerLong->currentIndex()).toInt());
-            homeButton = static_cast<QGamepadManager::GamepadButton>(comboBoxHome->itemData(comboBoxHome->currentIndex()).toInt());
+            QGamepadManager::GamepadButton power = variantToButton(currentData(comboBoxPower));
+            powerButton = power;
+            settings.setValue("ButtonPower", power);
+            QGamepadManager::GamepadButton powerLong = variantToButton(currentData(comboBoxPowerLong));
+            powerLongButton = powerLong;
+            settings.setValue("ButtonPowerLong", powerLong);
+            QGamepadManager::GamepadButton home = variantToButton(currentData(comboBoxHome));
+            homeButton = home;
+            settings.setValue("ButtonHome", home);
 
-            touchButton1 = static_cast<QGamepadManager::GamepadButton>(comboBoxTouch1->itemData(comboBoxTouch1->currentIndex()).toInt());
-            touchButton2 = static_cast<QGamepadManager::GamepadButton>(comboBoxTouch2->itemData(comboBoxTouch2->currentIndex()).toInt());
+            QGamepadManager::GamepadButton t1 = variantToButton(currentData(comboBoxTouch1));
+            touchButton1 = t1;
+            settings.setValue("ButtonT1", t1);
+            QGamepadManager::GamepadButton t2 = variantToButton(currentData(comboBoxTouch2));
+            touchButton2 = t2;
+            settings.setValue("ButtonT2", t2);
 
         });
         connect(closeButton, &QPushButton::pressed, this,
