@@ -43,6 +43,7 @@ QString ipAddress;
 int yAxisMultiplier = 1;
 bool abInverse = false;
 bool xyInverse = false;
+bool monsterHunterCamera = false;
 
 bool touchScreenPressed;
 QPoint touchScreenPosition;
@@ -282,9 +283,35 @@ struct GamepadMonitor : public QObject {
 
                 case QGamepadManager::AxisRightX:
                     rx = value;
+                    if (monsterHunterCamera)
+                    {
+                        if (value > -1.2 && value < -0.5) // RS tilted left
+                        {
+                            buttons |= QGamepadManager::GamepadButtons(1 << hidButtonsMiddle[3]); // press Left
+                        } else if (value > 0.5 && value < 1.2) // RS tilted right
+                        {
+                            buttons |= QGamepadManager::GamepadButtons(1 << hidButtonsMiddle[2]); // press Right
+                        } else { // RS neutral, release buttons
+                            buttons &= QGamepadManager::GamepadButtons(~(1 << hidButtonsMiddle[3])); // Release Left
+                            buttons &= QGamepadManager::GamepadButtons(~(1 << hidButtonsMiddle[2])); // release Right
+                        }
+                    }
                     break;
                 case QGamepadManager::AxisRightY:
                     ry = yAxisMultiplier * -value; // for some reason qt inverts this
+                    if (monsterHunterCamera)
+                    {
+                        if (ry > -1.2 && ry < -0.5) // RS tilted down
+                        {
+                            buttons |= QGamepadManager::GamepadButtons(1 << hidButtonsMiddle[5]); // press Down
+                        } else if (ry > 0.5 && ry < 1.2) // RS tilted up
+                        {
+                            buttons |= QGamepadManager::GamepadButtons(1 << hidButtonsMiddle[4]); // press Up
+                        } else { // RS neutral, release buttons
+                            buttons &= QGamepadManager::GamepadButtons(~(1 << hidButtonsMiddle[5])); // release Down
+                            buttons &= QGamepadManager::GamepadButtons(~(1 << hidButtonsMiddle[4])); // Release Up
+                        }
+                    }
                     break;
                 default: break;
             }
@@ -601,7 +628,7 @@ private:
     QVBoxLayout *layout;
     QFormLayout *formLayout;
     QLineEdit *addrLineEdit;
-    QCheckBox *invertYCheckbox, *invertABCheckbox, *invertXYCheckbox;
+    QCheckBox *invertYCheckbox, *invertABCheckbox, *invertXYCheckbox, *mhCameraCheckbox;
     QPushButton *homeButton, *powerButton, *longPowerButton, *remapConfigButton;
     TouchScreen *touchScreen;
     RemapConfig *remapConfig;
@@ -616,12 +643,14 @@ public:
         invertYCheckbox = new QCheckBox(this);
         invertABCheckbox = new QCheckBox(this);
         invertXYCheckbox = new QCheckBox(this);
+        mhCameraCheckbox = new QCheckBox(this);
         formLayout = new QFormLayout;
 
         formLayout->addRow(tr("IP &address"), addrLineEdit);
         formLayout->addRow(tr("&Invert Y axis"), invertYCheckbox);
         formLayout->addRow(tr("Invert A<->&B"), invertABCheckbox);
         formLayout->addRow(tr("Invert X<->&Y"), invertXYCheckbox);
+        formLayout->addRow(tr("RightStick &DPad"), mhCameraCheckbox);
         remapConfigButton = new QPushButton(tr("BUTTON &CONFIG"), this);
 
         homeButton = new QPushButton(tr("&HOME"), this);
@@ -692,6 +721,23 @@ public:
             }
         });
 
+        connect(mhCameraCheckbox, &QCheckBox::stateChanged, this,
+                [](int state)
+        {
+            switch(state)
+            {
+                case Qt::Unchecked:
+                    monsterHunterCamera = false;
+                    settings.setValue("monsterHunterCamera", false);
+                    break;
+                case Qt::Checked:
+                    monsterHunterCamera = true;
+                    settings.setValue("monsterHunterCamera", true);
+                    break;
+                default: break;
+            }
+        });
+
         connect(homeButton, &QPushButton::pressed, this,
                 [](void)
         {
@@ -748,6 +794,7 @@ public:
         invertYCheckbox->setChecked(settings.value("invertY", false).toBool());
         invertABCheckbox->setChecked(settings.value("invertAB", false).toBool());
         invertXYCheckbox->setChecked(settings.value("invertXY", false).toBool());
+        mhCameraCheckbox->setChecked(settings.value("monsterHunterCamera", false).toBool());
     }
 
     void show(void)
