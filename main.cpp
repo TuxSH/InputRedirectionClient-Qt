@@ -20,6 +20,7 @@
 #include <QCloseEvent>
 #include <QSettings>
 #include <QComboBox>
+#include <QPainter>
 
 #include <algorithm>
 #include <cmath>
@@ -331,6 +332,24 @@ struct TouchScreen : public QDialog {
         sendFrame();
         ev->accept();
     }
+
+    void paintEvent(QPaintEvent *)
+    {
+        QPainter painter(this);
+
+        if (settings.value("ButtonT1", QGamepadManager::ButtonInvalid) != QGamepadManager::ButtonInvalid)
+        {
+            QPen pen(QColor("#f00"));
+            painter.setPen(pen);
+            painter.drawEllipse(QPoint(settings.value("touchButton1X", 0).toInt(), settings.value("touchButton1Y", 0).toInt()), 3, 3);
+        }
+        if (settings.value("ButtonT2", QGamepadManager::ButtonInvalid) != QGamepadManager::ButtonInvalid)
+        {
+            QPen pen(QColor("#00f"));
+            painter.setPen(pen);
+            painter.drawEllipse(QPoint(settings.value("touchButton2X", 0).toInt(), settings.value("touchButton2Y", 0).toInt()), 3, 3);
+        }
+    }
 };
 
 struct FrameTimer : public QTimer {
@@ -393,7 +412,7 @@ private:
     }
 
 public:
-    RemapConfig(QWidget *parent = nullptr) : QDialog(parent)
+    RemapConfig(QWidget *parent = nullptr, QDialog *ts = nullptr) : QDialog(parent)
     {
         this->setFixedSize(TOUCH_SCREEN_WIDTH, 700);
         this->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint);
@@ -469,32 +488,36 @@ public:
         layout->addWidget(closeButton);
 
         connect(touchButton1XEdit, &QLineEdit::textChanged, this,
-                [](const QString &text)
+                [ts](const QString &text)
         {
             touchButton1X = text.toUInt();
+            ts->update();
             settings.setValue("touchButton1X", text);
         });
         connect(touchButton1YEdit, &QLineEdit::textChanged, this,
-                [](const QString &text)
+                [ts](const QString &text)
         {
             touchButton1Y = text.toUInt();
+            ts->update();
             settings.setValue("touchButton1Y", text);
         });
         connect(touchButton2XEdit, &QLineEdit::textChanged, this,
-                [](const QString &text)
+                [ts](const QString &text)
         {
             touchButton2X = text.toUInt();
+            ts->update();
             settings.setValue("touchButton2X", text);
         });
         connect(touchButton2YEdit, &QLineEdit::textChanged, this,
-                [](const QString &text)
+                [ts](const QString &text)
         {
             touchButton2Y = text.toUInt();
+            ts->update();
             settings.setValue("touchButton2Y", text);
         });
 
         connect(saveButton, &QPushButton::pressed, this,
-                [this](void)
+                [this, ts](void)
         {
             QGamepadManager::GamepadButton a = variantToButton(currentData(comboBoxA));
             hidButtonsAB[0] = a;
@@ -558,6 +581,7 @@ public:
             QGamepadManager::GamepadButton t2 = variantToButton(currentData(comboBoxTouch2));
             touchButton2 = t2;
             settings.setValue("ButtonT2", t2);
+            ts->update();
 
         });
         connect(closeButton, &QPushButton::pressed, this,
@@ -714,7 +738,7 @@ public:
         });
 
         touchScreen = new TouchScreen(nullptr);
-        remapConfig = new RemapConfig(nullptr);
+        remapConfig = new RemapConfig(nullptr, touchScreen);
         this->setWindowTitle(tr("InputRedirectionClient-Qt"));
 
         addrLineEdit->setText(settings.value("ipAddress", "").toString());
