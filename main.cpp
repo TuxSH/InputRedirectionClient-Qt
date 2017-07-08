@@ -41,7 +41,6 @@ QGamepadManager::GamepadButtons buttons = 0;
 u32 interfaceButtons = 0;
 QString ipAddress;
 int yAxisMultiplier = 1;
-int touchButton1X, touchButton1Y, touchButton2X, touchButton2Y;
 bool abInverse = false;
 bool xyInverse = false;
 
@@ -65,6 +64,10 @@ QGamepadManager::GamepadButton powerLongButton = variantToButton(settings.value(
 
 QGamepadManager::GamepadButton touchButton1 = variantToButton(settings.value("ButtonT1", QGamepadManager::ButtonInvalid));
 QGamepadManager::GamepadButton touchButton2 = variantToButton(settings.value("ButtonT2", QGamepadManager::ButtonInvalid));
+int touchButton1X = settings.value("touchButton1X", 0).toInt(),
+    touchButton1Y = settings.value("touchButton1Y", 0).toInt(),
+    touchButton2X = settings.value("touchButton2X", 0).toInt(),
+    touchButton2Y = settings.value("touchButton2Y", 0).toInt();
 
 QGamepadManager::GamepadButton hidButtonsAB[] = {
     variantToButton(settings.value("ButtonA", QGamepadManager::ButtonA)),
