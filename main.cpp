@@ -44,6 +44,7 @@ int yAxisMultiplier = 1;
 bool abInverse = false;
 bool xyInverse = false;
 bool monsterHunterCamera = false;
+bool rightStickSmash = false;
 
 bool touchScreenPressed;
 QPoint touchScreenPosition;
@@ -295,6 +296,19 @@ struct GamepadMonitor : public QObject {
                             buttons &= QGamepadManager::GamepadButtons(~(1 << hidButtonsMiddle[3])); // Release Left
                             buttons &= QGamepadManager::GamepadButtons(~(1 << hidButtonsMiddle[2])); // release Right
                         }
+                    } else if (rightStickSmash)
+                    {
+                        if (value > -1.2 && value < -0.5) // RS tilted left
+                        {
+                            buttons |= QGamepadManager::GamepadButtons(1 << hidButtonsAB[0]); // press A
+                            lx = -1.2;
+                        } else if (value > 0.5 && value < 1.2) // RS tilted right
+                        {
+                            buttons |= QGamepadManager::GamepadButtons(1 << hidButtonsAB[0]); // press A
+                            lx = 1.2;
+                        } else { // RS neutral, release buttons
+                            buttons &= QGamepadManager::GamepadButtons(~(1 << hidButtonsAB[0])); // Release A
+                        }
                     }
                     break;
                 case QGamepadManager::AxisRightY:
@@ -310,6 +324,19 @@ struct GamepadMonitor : public QObject {
                         } else { // RS neutral, release buttons
                             buttons &= QGamepadManager::GamepadButtons(~(1 << hidButtonsMiddle[5])); // release Down
                             buttons &= QGamepadManager::GamepadButtons(~(1 << hidButtonsMiddle[4])); // Release Up
+                        }
+                    } else if (rightStickSmash)
+                    {
+                        if (value > -1.2 && value < -0.5) // RS tilted down
+                        {
+                            buttons |= QGamepadManager::GamepadButtons(1 << hidButtonsAB[0]); // press A
+                            ly = -1.2;
+                        } else if (value > 0.5 && value < 1.2) // RS tilted up
+                        {
+                            buttons |= QGamepadManager::GamepadButtons(1 << hidButtonsAB[0]); // press A
+                            ly = 1.2;
+                        } else { // RS neutral, release button A
+                            buttons &= QGamepadManager::GamepadButtons(~(1 << hidButtonsAB[0])); // Release A
                         }
                     }
                     break;
@@ -628,7 +655,7 @@ private:
     QVBoxLayout *layout;
     QFormLayout *formLayout;
     QLineEdit *addrLineEdit;
-    QCheckBox *invertYCheckbox, *invertABCheckbox, *invertXYCheckbox, *mhCameraCheckbox;
+    QCheckBox *invertYCheckbox, *invertABCheckbox, *invertXYCheckbox, *mhCameraCheckbox, *rsSmashCheckbox;
     QPushButton *homeButton, *powerButton, *longPowerButton, *remapConfigButton;
     TouchScreen *touchScreen;
     RemapConfig *remapConfig;
@@ -644,6 +671,7 @@ public:
         invertABCheckbox = new QCheckBox(this);
         invertXYCheckbox = new QCheckBox(this);
         mhCameraCheckbox = new QCheckBox(this);
+        rsSmashCheckbox = new QCheckBox(this);
         formLayout = new QFormLayout;
 
         formLayout->addRow(tr("IP &address"), addrLineEdit);
@@ -651,6 +679,7 @@ public:
         formLayout->addRow(tr("Invert A<->&B"), invertABCheckbox);
         formLayout->addRow(tr("Invert X<->&Y"), invertXYCheckbox);
         formLayout->addRow(tr("RightStick &DPad"), mhCameraCheckbox);
+        formLayout->addRow(tr("RightStick &Smash"), rsSmashCheckbox);
         remapConfigButton = new QPushButton(tr("BUTTON &CONFIG"), this);
 
         homeButton = new QPushButton(tr("&HOME"), this);
@@ -738,6 +767,23 @@ public:
             }
         });
 
+        connect(rsSmashCheckbox, &QCheckBox::stateChanged, this,
+                [](int state)
+        {
+            switch(state)
+            {
+                case Qt::Unchecked:
+                    rightStickSmash = false;
+                    settings.setValue("rightStickSmash", false);
+                    break;
+                case Qt::Checked:
+                    rightStickSmash = true;
+                    settings.setValue("rightStickSmash", true);
+                    break;
+                default: break;
+            }
+        });
+
         connect(homeButton, &QPushButton::pressed, this,
                 [](void)
         {
@@ -795,6 +841,7 @@ public:
         invertABCheckbox->setChecked(settings.value("invertAB", false).toBool());
         invertXYCheckbox->setChecked(settings.value("invertXY", false).toBool());
         mhCameraCheckbox->setChecked(settings.value("monsterHunterCamera", false).toBool());
+        rsSmashCheckbox->setChecked(settings.value("rightStickSmash", false).toBool());
     }
 
     void show(void)
