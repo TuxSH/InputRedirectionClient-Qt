@@ -230,7 +230,7 @@ struct TouchScreen : public QDialog {
     TouchScreen(QWidget *parent = nullptr) : QDialog(parent)
     {
         this->setFixedSize(TOUCH_SCREEN_WIDTH, TOUCH_SCREEN_HEIGHT);
-        this->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint);
+        this->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowMinimizeButtonHint);
         this->setWindowTitle(tr("InputRedirectionClient-Qt - Touch screen"));
     }
 
