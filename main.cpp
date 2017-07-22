@@ -4,12 +4,10 @@
 
 #include <QWidget>
 #include <QApplication>
-#include <QDebug>
 #include <QGamepadManager>
 #include <QGamepad>
 #include <QtEndian>
 #include <QUdpSocket>
-#include <QTimer>
 #include <QFormLayout>
 #include <QVBoxLayout>
 #include <QLineEdit>
@@ -100,8 +98,8 @@ QGamepadManager::GamepadButton getButton(QString dsBtn)
 void sendFrame(void)
 {
     static const QGamepadManager::GamepadButton hidButtonsAB[] = {
-        getButton("Button/3DS_A"), //3ds_A
-        getButton("Button/3DS_B"), //3ds_B
+        getButton("Button/3DS_A"),
+        getButton("Button/3DS_B"),
     };
 
     static const QGamepadManager::GamepadButton hidButtonsMiddle[] = {
@@ -121,8 +119,8 @@ void sendFrame(void)
     };
 
     static const QGamepadManager::GamepadButton irButtons[] = {
-        QGamepadManager::ButtonGuide,
-        QGamepadManager::ButtonGuide,
+        getButton("Button/3DS_ZR"),
+        getButton("Button/3DS_ZL"),
     };
 
     static const QGamepadManager::GamepadButton speButtons[] = {
