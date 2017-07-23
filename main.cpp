@@ -39,7 +39,8 @@ double rx = 0.0, ry = 0.0;
 QGamepadManager::GamepadButtons buttons = 0;
 u32 interfaceButtons = 0;
 QString ipAddress;
-int yAxisMultiplier = 1;
+
+int yAxisMultiplier = 1, yAxisMultiplierCpp = 1;
 
 bool touchScreenPressed;
 QSize touchScreenSize;
@@ -269,7 +270,7 @@ struct GamepadMonitor : public QObject {
             else
             if(axis==axRightY)
             {
-                ry = yAxisMultiplier * -value;
+                ry = yAxisMultiplierCpp * -value;
             }
 
             sendFrame();
@@ -378,7 +379,7 @@ private:
     QVBoxLayout *layout;
     QFormLayout *formLayout;
     QLineEdit *addrLineEdit;
-    QCheckBox *invertYCheckbox, *swapSticksCheckbox;
+    QCheckBox *invertYCheckbox, *invertYCppCheckbox, *swapSticksCheckbox;
     QPushButton *homeButton, *powerButton, *longPowerButton;
     QSlider *touchOpacitySlider;
     TouchScreen *touchScreen;
@@ -391,11 +392,13 @@ public:
         addrLineEdit->setClearButtonEnabled(true);
 
         invertYCheckbox = new QCheckBox(this);
+        invertYCppCheckbox = new QCheckBox(this);
         swapSticksCheckbox = new QCheckBox(this);
         formLayout = new QFormLayout;
 
         formLayout->addRow(tr("IP &address"), addrLineEdit);
         formLayout->addRow(tr("&Invert Y axis"), invertYCheckbox);
+        formLayout->addRow(tr("&Invert Cpp Y axis"), invertYCppCheckbox);
         formLayout->addRow(tr("&Swap Analog Sticks"), swapSticksCheckbox);
 
         touchOpacitySlider = new QSlider(Qt::Horizontal);
@@ -431,6 +434,23 @@ public:
                     break;
                 case Qt::Checked:
                     yAxisMultiplier = -1;
+                    settings.setValue("invertY", true);
+                    break;
+                default: break;
+            }
+        });
+
+        connect(invertYCppCheckbox, &QCheckBox::stateChanged, this,
+                [](int state)
+        {
+            switch(state)
+            {
+                case Qt::Unchecked:
+                    yAxisMultiplierCpp = 1;
+                    settings.setValue("invertY", false);
+                    break;
+                case Qt::Checked:
+                    yAxisMultiplierCpp = -1;
                     settings.setValue("invertY", true);
                     break;
                 default: break;
