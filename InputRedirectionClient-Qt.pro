@@ -23,6 +23,16 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 
-SOURCES += main.cpp
+SOURCES += main.cpp \
+    TouchScreen.cpp \
+    global.cpp \
+    gpmanager.cpp
 
 #HEADERS  += widget.h
+
+HEADERS += \
+    gpmanager.h \
+    mainwidget.h \
+    TouchScreen.h \
+    global.h \
+    gpmanager.h
