@@ -2,7 +2,7 @@
 #define _USE_MATH_DEFINES
 #endif
 
-#include "main.h"
+#include "mainwidget.h"
 #include "gpmanager.h"
 
 int main(int argc, char *argv[])
