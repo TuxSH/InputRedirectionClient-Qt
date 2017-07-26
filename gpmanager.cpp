@@ -8,8 +8,10 @@ QGamepadManager::GamepadButton getButton(QString dsBtn)
     val =  settings.value(dsBtn);
     gpPadBtn = val.toString();
 
-    QGamepadManager::GamepadButton btnConv = QGamepadManager::ButtonGuide;
+    QGamepadManager::GamepadButton btnConv = QGamepadManager::ButtonInvalid;
 
+    if(gpPadBtn == "360_GUIDE") btnConv = QGamepadManager::ButtonGuide;
+    else
     if(gpPadBtn == "360_A") btnConv = QGamepadManager::ButtonA;
     else
     if(gpPadBtn == "360_B") btnConv = QGamepadManager::ButtonB;

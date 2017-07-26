@@ -1,5 +1,4 @@
-#include "TouchScreen.h"
-#include "global.h"
+#include "touchscreen.h"
 
 void TouchScreen::setTouchScreenPressed(bool b)
 {
@@ -59,11 +58,12 @@ void TouchScreen::mousePressEvent(QMouseEvent *ev)
     {
 
        QString strPic = QFileDialog::getOpenFileName(this,
-                      tr("Open Touchscreen Image (320x240)"), "MyDocuments",
+                      tr("Open Touchscreen Image (320x240)"), lastOverlayPath,
                       tr("Image Files (*.jpg *.jpeg *.png *.bmp *.gif *.pbm *.pgm *.ppm *.xbm *.xpm)"));
 
         if(!strPic.isNull())
         {
+            lastOverlayPath = strPic;
            QPixmap newPic(strPic);
            bgLabel->setPixmap(newPic);
         }

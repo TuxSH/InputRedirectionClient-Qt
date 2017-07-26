@@ -6,16 +6,17 @@
 struct TouchScreen : public QDialog {
 private:
     QLabel *bgLabel;
-   // QSize touchScreenSize;
-  //  QPoint touchScreenPosition;
+    QString lastOverlayPath;
 
 public:
     TouchScreen(QWidget *parent = nullptr) : QDialog(parent)
     {
-        this->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowMinimizeButtonHint);
-        this->setWindowTitle(tr("InputRedirectionClient-Qt - Touch screen"));
+        this->setWindowFlags(Qt::WindowMinimizeButtonHint);
+        this->setWindowTitle(tr("Touch screen"));
 
-        QString curPath = qApp->QCoreApplication::applicationDirPath()+"/Touchscreen.jpg";
+        QString curPath = qApp->QCoreApplication::applicationDirPath()+"/Overlays/default.jpg";
+        lastOverlayPath = curPath;
+
         QPixmap bkgnd(curPath);
 
         bgLabel = new QLabel(this);

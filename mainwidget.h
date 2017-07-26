@@ -1,7 +1,7 @@
 #ifndef MAINWIDGET_H
 #define MAINWIDGET_H
 
-#include "TouchScreen.h"
+#include "touchscreen.h"
 #include "global.h"
 
 QSettings settings("TuxSH", "InputRedirectionClient-Qt");
