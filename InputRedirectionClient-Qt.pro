@@ -26,7 +26,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += main.cpp \
     global.cpp \
     gpmanager.cpp \
-    touchscreen.cpp
+    touchscreen.cpp \
+    configwindow.cpp
 
 #HEADERS  += widget.h
 
@@ -35,4 +36,5 @@ HEADERS += \
     gpmanager.h \
     mainwidget.h \
     touchscreen.h \
+    configwindow.h \
     gpconfigurator.h

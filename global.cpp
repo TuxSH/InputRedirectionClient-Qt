@@ -1,75 +1,75 @@
 #include "global.h"
-#include <QThread>
-
 #include "gpmanager.h"
+
+QSettings settings("TuxSH", "InputRedirectionClient-Qt");
 
 QGamepadManager::GamepadButtons buttons = 0;
 u32 interfaceButtons = 0;
-bool shouldSwapStick = false;
 int yAxisMultiplier = 1, yAxisMultiplierCpp = 1;
+bool shouldSwapStick = false;
+bool monsterHunterCamera = false;
+bool rightStickSmash = false;
+bool isSmashingH = false;
+bool isSmashingV = false;
+bool rightStickFaceButtons = false;
+bool cStickDisabled = false;
 
 double lx = 0.0, ly = 0.0;
 double rx = 0.0, ry = 0.0;
-
-QString ipAddress;
-bool touchScreenPressed;
-
-QSize touchScreenSize;
-QPoint touchScreenPosition;
+double previousLX = lx, previousLY = ly;
 
 GamepadConfigurator *gpConfigurator;
 
-void SendFrameClass::run()
+QString ipAddress;
+bool timerEnabled = false;
+
+bool touchScreenPressed;
+QSize touchScreenSize;
+QPoint touchScreenPosition;
+double tsRatio = 1;
+
+QGamepadManager::GamepadButton homeButton = variantToButton(settings.value("ButtonHome", QGamepadManager::ButtonInvalid));
+QGamepadManager::GamepadButton powerButton = variantToButton(settings.value("ButtonPower", QGamepadManager::ButtonInvalid));
+QGamepadManager::GamepadButton powerLongButton = variantToButton(settings.value("ButtonPowerLong", QGamepadManager::ButtonInvalid));
+
+QGamepadManager::GamepadButton touchButton1 = variantToButton(settings.value("ButtonT1", QGamepadManager::ButtonInvalid));
+QGamepadManager::GamepadButton touchButton2 = variantToButton(settings.value("ButtonT2", QGamepadManager::ButtonInvalid));
+QGamepadManager::GamepadButton touchButton3 = variantToButton(settings.value("ButtonT3", QGamepadManager::ButtonInvalid));
+QGamepadManager::GamepadButton touchButton4 = variantToButton(settings.value("ButtonT4", QGamepadManager::ButtonInvalid));
+int touchButton1X = settings.value("touchButton1X", 0).toInt();
+int touchButton1Y = settings.value("touchButton1Y", 0).toInt();
+int touchButton2X = settings.value("touchButton2X", 0).toInt();
+int touchButton2Y = settings.value("touchButton2Y", 0).toInt();
+int touchButton3X = settings.value("touchButton3X", 0).toInt();
+int touchButton3Y = settings.value("touchButton3Y", 0).toInt();
+int touchButton4X = settings.value("touchButton4X", 0).toInt();
+int touchButton4Y = settings.value("touchButton4Y", 0).toInt();
+
+QGamepadManager::GamepadButton hidButtonsAB[2]={
+variantToButton(settings.value("ButtonA", QGamepadManager::ButtonA)),
+variantToButton(settings.value("ButtonB", QGamepadManager::ButtonB))};
+
+QGamepadManager::GamepadButton hidButtonsMiddle[8] ={
+variantToButton(settings.value("ButtonSelect", QGamepadManager::ButtonSelect)),
+variantToButton(settings.value("ButtonStart", QGamepadManager::ButtonStart)),
+variantToButton(settings.value("ButtonRight", QGamepadManager::ButtonRight)),
+variantToButton(settings.value("ButtonLeft", QGamepadManager::ButtonLeft)),
+variantToButton(settings.value("ButtonUp", QGamepadManager::ButtonUp)),
+variantToButton(settings.value("ButtonDown", QGamepadManager::ButtonDown)),
+variantToButton(settings.value("ButtonR", QGamepadManager::ButtonR1)),
+variantToButton(settings.value("ButtonL", QGamepadManager::ButtonL1))};
+
+QGamepadManager::GamepadButton hidButtonsXY[2] = {
+    variantToButton(settings.value("ButtonX", QGamepadManager::ButtonX)),
+    variantToButton(settings.value("ButtonY", QGamepadManager::ButtonY))};
+
+QGamepadManager::GamepadButton irButtons[2] = {
+    variantToButton(settings.value("ButtonZR", QGamepadManager::ButtonR2)),
+    variantToButton(settings.value("ButtonZL", QGamepadManager::ButtonL2))};
+
+
+void sendFrame(void)
 {
-    QTimer timer;
-    connect(&timer, SIGNAL(timeout()), this, SLOT(timerHit()), Qt::DirectConnection);
-    timer.setInterval(20);
-    timer.start();   // puts one event in the threads event queue
-    exec();
-    timer.stop();
-}
-
-void SendFrameClass::timerHit()
-{
-    sendFrame();
-}
-
-void SendFrameClass::sendFrame()
-{
-    static const QGamepadManager::GamepadButton hidButtonsAB[] = {
-        getButton("Button/3DS_A"),
-        getButton("Button/3DS_B"),
-    };
-
-    static const QGamepadManager::GamepadButton hidButtonsMiddle[] = {
-        getButton("Button/3DS_SELECT"),
-        getButton("Button/3DS_START"),
-        getButton("Button/3DS_D_RIGHT"),
-        getButton("Button/3DS_D_LEFT"),
-        getButton("Button/3DS_D_UP"),
-        getButton("Button/3DS_D_DOWN"),
-        getButton("Button/3DS_R"),
-        getButton("Button/3DS_L"),
-    };
-
-    static const QGamepadManager::GamepadButton hidButtonsXY[] = {
-        getButton("Button/3DS_X"),
-        getButton("Button/3DS_Y"),
-    };
-
-    static const QGamepadManager::GamepadButton irButtons[] = {
-        getButton("Button/3DS_ZR"),
-        getButton("Button/3DS_ZL"),
-    };
-
-    static const QGamepadManager::GamepadButton speButtons[] = {
-        getButton("Button/3DS_HOME"),
-        getButton("Button/3DS_POWER"),
-        getButton("Button/3DS_LPOWER"),
-    };
-
-    qDebug() << "Sending";
-
     u32 hidPad = 0xfff;
     for(u32 i = 0; i < 2; i++)
     {
@@ -92,22 +92,23 @@ void SendFrameClass::sendFrame()
     u32 irButtonsState = 0;
     for(u32 i = 0; i < 2; i++)
     {
-        if(buttons & (1 << irButtons[i]))
-            irButtonsState |= 1 << (i + 1);
+            if(buttons & (1 << irButtons[i]))
+                irButtonsState |= 1 << (i + 1);
     }
-
-    u32 specialButtonsState = 0;
-    for(u32 i = 0; i < 3; i++)
-    {
-
-        if(buttons & (1 << speButtons[i]))
-            specialButtonsState |= 1 << i;
-    }
-    specialButtonsState |= interfaceButtons;
 
     u32 touchScreenState = 0x2000000;
     u32 circlePadState = 0x7ff7ff;
     u32 cppState = 0x80800081;
+
+    if(touchScreenPressed)
+    {
+        u32 x = (u32)(0xfff * std::min(std::max(0, touchScreenPosition.x()),
+                                       touchScreenSize.width())) / touchScreenSize.width();
+        u32 y = (u32)(0xfff * std::min(std::max(0, touchScreenPosition.y()),
+                                       touchScreenSize.height())) / touchScreenSize.height();
+
+        touchScreenState = (1 << 24) | (y << 12) | x;
+    }
 
     if(lx != 0.0 || ly != 0.0)
       {
@@ -130,21 +131,20 @@ void SendFrameClass::sendFrame()
           cppState = (y << 24) | (x << 16) | (irButtonsState << 8) | 0x81;
       }
 
-      if(touchScreenPressed)
-      {
-          u32 x = (u32)(0xfff * std::min(std::max(0, touchScreenPosition.x()),
-                                         touchScreenSize.width())) / touchScreenSize.width();
-          u32 y = (u32)(0xfff * std::min(std::max(0, touchScreenPosition.y()),
-                                         touchScreenSize.height())) / touchScreenSize.height();
-
-          touchScreenState = (1 << 24) | (y << 12) | x;
-      }
-
       QByteArray ba(20, 0);
       qToLittleEndian(hidPad, (uchar *)ba.data());
       qToLittleEndian(touchScreenState, (uchar *)ba.data() + 4);
       qToLittleEndian(circlePadState, (uchar *)ba.data() + 8);
       qToLittleEndian(cppState, (uchar *)ba.data() + 12);
-      qToLittleEndian(specialButtonsState, (uchar *)ba.data() + 16);
+      qToLittleEndian(interfaceButtons, (uchar *)ba.data() + 16);
       QUdpSocket().writeDatagram(ba, QHostAddress(ipAddress), 4950);
+}
+
+QGamepadManager::GamepadButton variantToButton(QVariant variant)
+{
+    QGamepadManager::GamepadButton button;
+
+    button = static_cast<QGamepadManager::GamepadButton>(variant.toInt());
+
+    return button;
 }

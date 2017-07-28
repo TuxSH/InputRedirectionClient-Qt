@@ -1,49 +1,43 @@
 #ifndef MAINWIDGET_H
 #define MAINWIDGET_H
 
-#include <QMessageBox>
 #include "global.h"
 
+#include <QMessageBox>
+
 #include "touchscreen.h"
+#include "configwindow.h"
 #include "gpconfigurator.h"
 
-QSettings settings("TuxSH", "InputRedirectionClient-Qt");
 
 class Widget : public QWidget
 {
 private:
-
     QVBoxLayout *layout;
     QFormLayout *formLayout;
+    QPushButton *homeButton, *powerButton, *longPowerButton, *remapConfigButton,
+        *enableTimerButton, *clearImageButton, *configGamepadButton;
     QLineEdit *addrLineEdit;
-    QCheckBox *invertYCheckbox, *invertYCppCheckbox, *swapSticksCheckbox;
-    QPushButton *homeButton, *powerButton, *longPowerButton, *configButton;
     QSlider *touchOpacitySlider;
-
-    TouchScreen *touchScreen;
+    ConfigWindow *remapConfig;
 
 public:
+    TouchScreen *touchScreen;
 
     Widget(QWidget *parent = nullptr) : QWidget(parent)
     {
         layout = new QVBoxLayout(this);
 
         addrLineEdit = new QLineEdit(this);
-        formLayout = new QFormLayout(this);
-
         addrLineEdit->setClearButtonEnabled(true);
+        enableTimerButton = new QPushButton(tr("DISABLED"), this);
 
-        invertYCheckbox = new QCheckBox(this);
-        invertYCppCheckbox = new QCheckBox(this);
-        swapSticksCheckbox = new QCheckBox(this);
-
+        formLayout = new QFormLayout;
         formLayout->addRow(tr("IP &address"), addrLineEdit);
-        formLayout->addRow(tr("&Invert Y axis"), invertYCheckbox);
-        formLayout->addRow(tr("&Invert Cpp Y axis"), invertYCppCheckbox);
-        formLayout->addRow(tr("&Swap Analog Sticks"), swapSticksCheckbox);
+        formLayout->addRow(tr("Frame &Timer"), enableTimerButton);
 
         touchOpacitySlider = new QSlider(Qt::Horizontal);
-        touchOpacitySlider->setRange(0, 10);
+        touchOpacitySlider->setRange(1, 10);
         touchOpacitySlider->setValue(10);
         touchOpacitySlider->setTickInterval(1);
         formLayout->addRow(tr("TS &Opacity"), touchOpacitySlider);
@@ -51,15 +45,18 @@ public:
         homeButton = new QPushButton(tr("&HOME"), this);
         powerButton = new QPushButton(tr("&POWER"), this);
         longPowerButton = new QPushButton(tr("POWER (&long)"), this);
-        configButton = new QPushButton(tr("&Configure Controller"), this);
+        remapConfigButton = new QPushButton(tr("BUTTON &CONFIG"), this);
+        clearImageButton = new QPushButton(tr("&CLEAR IMAGE"), this);
+        configGamepadButton = new QPushButton(tr("&CONFIGURE GAMEPAD"));
 
         layout->addLayout(formLayout);
         layout->addWidget(homeButton);
         layout->addWidget(powerButton);
         layout->addWidget(longPowerButton);
-        layout->addWidget(configButton);
+        layout->addWidget(configGamepadButton);
+        layout->addWidget(remapConfigButton);
+        layout->addWidget(clearImageButton);
 
-        touchScreen = new TouchScreen(nullptr);
         gpConfigurator = new GamepadConfigurator();
 
         connect(addrLineEdit, &QLineEdit::textChanged, this,
@@ -69,111 +66,44 @@ public:
             settings.setValue("ipAddress", text);
         });
 
-        connect(invertYCheckbox, &QCheckBox::stateChanged, this,
-                [](int state)
+        connect(configGamepadButton, &QPushButton::released, this,
+                [](void)
         {
-            switch(state)
+           gpConfigurator->showGui();
+         });
+
+        connect(enableTimerButton, &QPushButton::released, this,
+                [this](void)
+        {
+            if (!timerEnabled)
             {
-                case Qt::Unchecked:
-                    yAxisMultiplier = 1;
-                    settings.setValue("invertY", false);
-                    break;
-                case Qt::Checked:
-                    yAxisMultiplier = -1;
-                    settings.setValue("invertY", true);
-                    break;
-                default: break;
+                timerEnabled = true;
+                enableTimerButton->setText("ENABLED");
+            } else {
+                timerEnabled = false;
+                enableTimerButton->setText("DISABLED");
             }
         });
 
-        connect(invertYCppCheckbox, &QCheckBox::stateChanged, this,
-                [](int state)
-        {
-            switch(state)
-            {
-                case Qt::Unchecked:
-                    yAxisMultiplierCpp = 1;
-                    settings.setValue("invertYCpp", false);
-                    break;
-                case Qt::Checked:
-                    yAxisMultiplierCpp = -1;
-                    settings.setValue("invertYCpp", true);
-                    break;
-                default: break;
-            }
-        });
-
-        connect(swapSticksCheckbox, &QCheckBox::stateChanged, this,
-                [](int state)
-        {
-            switch(state)
-            {
-                case Qt::Unchecked:
-                    shouldSwapStick = false;
-                    settings.setValue("shouldSwapStick", false);
-                    break;
-                case Qt::Checked:
-                    shouldSwapStick = true;
-                    settings.setValue("shouldSwapStick", true);
-                    break;
-                default: break;
-            }
-
-        });
-
-        connect(homeButton, &QPushButton::released, this,
+        connect(homeButton, &QPushButton::pressed, this,
                 [](void)
         {
            interfaceButtons |= 1;
-           //sendFrame();
+           sendFrame();
         });
 
         connect(homeButton, &QPushButton::released, this,
                 [](void)
         {
            interfaceButtons &= ~1;
-          // sendFrame();
+           sendFrame();
         });
 
-        connect(powerButton, &QPushButton::released, this,
+        connect(powerButton, &QPushButton::pressed, this,
                 [](void)
         {
            interfaceButtons |= 2;
-          // sendFrame();
-        });
-
-        connect(powerButton, &QPushButton::released, this,
-                [](void)
-        {
-           interfaceButtons &= ~2;
-          // sendFrame();
-        });
-
-        connect(longPowerButton, &QPushButton::released, this,
-                [](void)
-        {
-           interfaceButtons |= 4;
-          // sendFrame();
-        });
-
-        connect(longPowerButton, &QPushButton::released, this,
-                [](void)
-        {
-           interfaceButtons &= ~4;
-           //sendFrame();
-        });
-
-        connect(configButton, &QPushButton::released, this,
-                [](void)
-        {
-           gpConfigurator->showGui();
-        });
-
-        connect(touchOpacitySlider, &QSlider::valueChanged, this,
-                [this](int value)
-        {
-            touchScreen->setWindowOpacity(value / 10.0);
-            touchScreen->update();
+           sendFrame();
         });
 
         connect(QGamepadManager::instance(), &QGamepadManager::gamepadButtonReleaseEvent, this,
@@ -211,25 +141,78 @@ public:
                msgBox->setInformativeText("Please restart the program for changes to take affect.");
                msgBox->show();
 
+});
+
+        connect(powerButton, &QPushButton::released, this,
+                [](void)
+        {
+           interfaceButtons &= ~2;
+           sendFrame();
         });
 
+        connect(longPowerButton, &QPushButton::pressed, this,
+                [](void)
+        {
+           interfaceButtons |= 4;
+           sendFrame();
+        });
+
+        connect(longPowerButton, &QPushButton::released, this,
+                [](void)
+        {
+           interfaceButtons &= ~4;
+           sendFrame();
+        });
+
+        connect(remapConfigButton, &QPushButton::released, this,
+                [this](void)
+        {
+            if (!remapConfig->isVisible())
+            {
+                remapConfig->move(this->x() - remapConfig->width() - 5,this->y());
+                remapConfig->show();
+            } else remapConfig->hide();
+        });
+
+        connect(clearImageButton, &QPushButton::released, this,
+                [this](void)
+        {
+           touchScreen->clearImage();
+        });
+
+        connect(touchOpacitySlider, &QSlider::valueChanged, this,
+                [this](int value)
+        {
+            touchScreen->setWindowOpacity(value / 10.0);
+            touchScreen->update();
+        });
+
+
+        touchScreen = new TouchScreen(nullptr);
+        remapConfig = new ConfigWindow(nullptr, touchScreen);
         this->setWindowTitle(tr("InputRedirectionClient-Qt"));
 
         addrLineEdit->setText(settings.value("ipAddress", "").toString());
-        invertYCheckbox->setChecked(settings.value("invertY", false).toBool());
     }
 
     void show(void)
     {
         QWidget::show();
+        touchScreen->move(this->x() + this->width() + 5,this->y());
         touchScreen->show();
+        remapConfig->hide();
     }
-
 
     void closeEvent(QCloseEvent *ev)
     {
         touchScreen->close();
+        remapConfig->close();
         ev->accept();
+    }
+
+    void moveEvent(QMoveEvent *event)
+    {
+        touchScreen->move(touchScreen->pos() + (event->pos() - event->oldPos()));
     }
 
     virtual ~Widget(void)
@@ -238,8 +221,9 @@ public:
         buttons = 0;
         interfaceButtons = 0;
         touchScreen->setTouchScreenPressed(false);
+        sendFrame();
         delete touchScreen;
-        delete gpConfigurator;
+        delete remapConfig;
     }
 };
 
