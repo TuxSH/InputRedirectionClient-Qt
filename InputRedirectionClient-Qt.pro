@@ -24,15 +24,15 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 
 SOURCES += main.cpp \
-    TouchScreen.cpp \
     global.cpp \
-    gpmanager.cpp
+    gpmanager.cpp \
+    touchscreen.cpp
 
 #HEADERS  += widget.h
 
 HEADERS += \
+    global.h \
     gpmanager.h \
     mainwidget.h \
-    TouchScreen.h \
-    global.h \
-    gpmanager.h
+    touchscreen.h \
+    gpconfigurator.h

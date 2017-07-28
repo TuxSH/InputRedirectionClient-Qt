@@ -38,6 +38,11 @@ public:
         bool isTouchScreenPressed();
         void setTouchScreenPressed(bool b);
 
+         virtual ~TouchScreen(void)
+        {
+           // delete bgLabel;
+        }
+
 };
 
 #endif // TOUCHSCREEN_H

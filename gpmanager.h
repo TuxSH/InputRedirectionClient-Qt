@@ -1,10 +1,12 @@
 #ifndef GPMANAGER_H
 #define GPMANAGER_H
 
+#include "global.h"
+
 #include <QGamepadManager>
 #include <QGamepad>
 
-#include "global.h"
+
 
 extern QGamepadManager::GamepadButton getButton(QString dsBtn);
 
@@ -12,23 +14,19 @@ struct GamepadMonitor : public QObject {
 
     GamepadMonitor(QObject *parent) : QObject(parent)
     {
+
         connect(QGamepadManager::instance(), &QGamepadManager::gamepadButtonPressEvent, this,
             [](int deviceId, QGamepadManager::GamepadButton button, double value)
         {
             (void)deviceId;
             (void)value;
-            buttons |= QGamepadManager::GamepadButtons(1 << button);
 
-            sendFrame();
+           buttons |= QGamepadManager::GamepadButtons(1 << button);
+
+         // sendFrame();
+
         });
 
-        connect(QGamepadManager::instance(), &QGamepadManager::gamepadButtonReleaseEvent, this,
-            [](int deviceId, QGamepadManager::GamepadButton button)
-        {
-            (void)deviceId;
-            buttons &= QGamepadManager::GamepadButtons(~(1 << button));
-           sendFrame();
-        });
         connect(QGamepadManager::instance(), &QGamepadManager::gamepadAxisEvent, this,
             [](int deviceId, QGamepadManager::GamepadAxis axis, double value)
         {
@@ -60,7 +58,7 @@ struct GamepadMonitor : public QObject {
                  ry = yAxisMultiplier*-value;
              }
 
-            sendFrame();
+            //sendFrame();
         });
     }
 };

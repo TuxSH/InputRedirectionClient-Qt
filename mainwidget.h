@@ -1,8 +1,11 @@
 #ifndef MAINWIDGET_H
 #define MAINWIDGET_H
 
-#include "touchscreen.h"
+#include <QMessageBox>
 #include "global.h"
+
+#include "touchscreen.h"
+#include "gpconfigurator.h"
 
 QSettings settings("TuxSH", "InputRedirectionClient-Qt");
 
@@ -14,24 +17,25 @@ private:
     QFormLayout *formLayout;
     QLineEdit *addrLineEdit;
     QCheckBox *invertYCheckbox, *invertYCppCheckbox, *swapSticksCheckbox;
-    QPushButton *homeButton, *powerButton, *longPowerButton;
+    QPushButton *homeButton, *powerButton, *longPowerButton, *configButton;
     QSlider *touchOpacitySlider;
 
+    TouchScreen *touchScreen;
 
 public:
-    TouchScreen *touchScreen;
 
     Widget(QWidget *parent = nullptr) : QWidget(parent)
     {
         layout = new QVBoxLayout(this);
 
         addrLineEdit = new QLineEdit(this);
+        formLayout = new QFormLayout(this);
+
         addrLineEdit->setClearButtonEnabled(true);
 
         invertYCheckbox = new QCheckBox(this);
         invertYCppCheckbox = new QCheckBox(this);
         swapSticksCheckbox = new QCheckBox(this);
-        formLayout = new QFormLayout;
 
         formLayout->addRow(tr("IP &address"), addrLineEdit);
         formLayout->addRow(tr("&Invert Y axis"), invertYCheckbox);
@@ -39,7 +43,7 @@ public:
         formLayout->addRow(tr("&Swap Analog Sticks"), swapSticksCheckbox);
 
         touchOpacitySlider = new QSlider(Qt::Horizontal);
-        touchOpacitySlider->setRange(1, 10);
+        touchOpacitySlider->setRange(0, 10);
         touchOpacitySlider->setValue(10);
         touchOpacitySlider->setTickInterval(1);
         formLayout->addRow(tr("TS &Opacity"), touchOpacitySlider);
@@ -47,11 +51,16 @@ public:
         homeButton = new QPushButton(tr("&HOME"), this);
         powerButton = new QPushButton(tr("&POWER"), this);
         longPowerButton = new QPushButton(tr("POWER (&long)"), this);
+        configButton = new QPushButton(tr("&Configure Controller"), this);
 
         layout->addLayout(formLayout);
         layout->addWidget(homeButton);
         layout->addWidget(powerButton);
         layout->addWidget(longPowerButton);
+        layout->addWidget(configButton);
+
+        touchScreen = new TouchScreen(nullptr);
+        gpConfigurator = new GamepadConfigurator();
 
         connect(addrLineEdit, &QLineEdit::textChanged, this,
                 [](const QString &text)
@@ -112,46 +121,52 @@ public:
 
         });
 
-        connect(homeButton, &QPushButton::pressed, this,
+        connect(homeButton, &QPushButton::released, this,
                 [](void)
         {
            interfaceButtons |= 1;
-           sendFrame();
+           //sendFrame();
         });
 
         connect(homeButton, &QPushButton::released, this,
                 [](void)
         {
            interfaceButtons &= ~1;
-           sendFrame();
+          // sendFrame();
         });
 
-        connect(powerButton, &QPushButton::pressed, this,
+        connect(powerButton, &QPushButton::released, this,
                 [](void)
         {
            interfaceButtons |= 2;
-           sendFrame();
+          // sendFrame();
         });
 
         connect(powerButton, &QPushButton::released, this,
                 [](void)
         {
            interfaceButtons &= ~2;
-           sendFrame();
+          // sendFrame();
         });
 
-        connect(longPowerButton, &QPushButton::pressed, this,
+        connect(longPowerButton, &QPushButton::released, this,
                 [](void)
         {
            interfaceButtons |= 4;
-           sendFrame();
+          // sendFrame();
         });
 
         connect(longPowerButton, &QPushButton::released, this,
                 [](void)
         {
            interfaceButtons &= ~4;
-           sendFrame();
+           //sendFrame();
+        });
+
+        connect(configButton, &QPushButton::released, this,
+                [](void)
+        {
+           gpConfigurator->showGui();
         });
 
         connect(touchOpacitySlider, &QSlider::valueChanged, this,
@@ -161,9 +176,43 @@ public:
             touchScreen->update();
         });
 
+        connect(QGamepadManager::instance(), &QGamepadManager::gamepadButtonReleaseEvent, this,
+            [](int deviceId, QGamepadManager::GamepadButton button)
+        {
+            (void)deviceId;
+
+            gpConfigurator->setCurDeviceId(deviceId);
+
+            if(gpConfigurator->isVisible())
+            {
+               gpConfigurator->getInput(deviceId, button);
+                return;
+            }
+
+                buttons &= QGamepadManager::GamepadButtons(~(1 << button));
+               // sendFrame();
+
+        });
+
+        connect(gpConfigurator->skipButton, &QPushButton::released, this,
+                [](void)
+        {
+               gpConfigurator->next();
+        });
 
 
-        touchScreen = new TouchScreen(nullptr);
+        connect(gpConfigurator->resetConfigButton, &QPushButton::released, this,
+                [](void)
+        {
+               QMessageBox *msgBox = new QMessageBox(0);
+               QGamepadManager::instance()->resetConfiguration(gpConfigurator->getCurDeviceId());
+
+               msgBox->setText("Reset");
+               msgBox->setInformativeText("Please restart the program for changes to take affect.");
+               msgBox->show();
+
+        });
+
         this->setWindowTitle(tr("InputRedirectionClient-Qt"));
 
         addrLineEdit->setText(settings.value("ipAddress", "").toString());
@@ -189,11 +238,9 @@ public:
         buttons = 0;
         interfaceButtons = 0;
         touchScreen->setTouchScreenPressed(false);
-        sendFrame();
         delete touchScreen;
+        delete gpConfigurator;
     }
-
-
 };
 
 #endif // MAINWIDGET_H

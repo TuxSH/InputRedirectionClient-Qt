@@ -2,15 +2,25 @@
 #define _USE_MATH_DEFINES
 #endif
 
+#include "global.h"
+
 #include "mainwidget.h"
 #include "gpmanager.h"
+#include <QFuture>
+#include <QtConcurrent/QtConcurrent>
+
+
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     Widget w;
     GamepadMonitor m(&w);
-    w.show();
+    SendFrameClass sfc;
 
-    return a.exec();
+    sfc.start();
+    w.show();
+    a.exec();
+
+    return 0;
 }

@@ -19,11 +19,14 @@
 #include <QFileDialog>
 #include <QLabel>
 #include <QSlider>
+#include <QTimer>
+#include <QThread>
+#include "gpconfigurator.h"
 
 #define TOUCH_SCREEN_WIDTH  320
 #define TOUCH_SCREEN_HEIGHT 240
 
-#define CPAD_BOUND          0x5d0
+#define CPAD_BOUND          0x4E20
 #define CPP_BOUND           0x7f
 
 typedef uint32_t u32;
@@ -37,11 +40,33 @@ extern u32 interfaceButtons;
 extern bool shouldSwapStick;
 extern int yAxisMultiplier, yAxisMultiplierCpp;
 
+extern GamepadConfigurator *gpConfigurator;
+
 extern double lx, ly;
 extern double rx, ry;
 extern QString ipAddress;
 extern bool touchScreenPressed;
 extern QSize touchScreenSize;
 extern QPoint touchScreenPosition;
+
+class SendFrameClass : public QThread
+{
+    Q_OBJECT
+signals:
+    void sendTime();
+
+private:
+    void run();
+    void sendFrame();
+
+private slots:
+    void timerHit();
+public:
+    virtual ~SendFrameClass()
+    {
+
+    }
+
+};
 
 #endif // GLOBAL_H

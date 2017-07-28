@@ -1,4 +1,6 @@
 #include "global.h"
+#include <QThread>
+
 #include "gpmanager.h"
 
 QGamepadManager::GamepadButtons buttons = 0;
@@ -15,8 +17,24 @@ bool touchScreenPressed;
 QSize touchScreenSize;
 QPoint touchScreenPosition;
 
+GamepadConfigurator *gpConfigurator;
 
-void sendFrame()
+void SendFrameClass::run()
+{
+    QTimer timer;
+    connect(&timer, SIGNAL(timeout()), this, SLOT(timerHit()), Qt::DirectConnection);
+    timer.setInterval(20);
+    timer.start();   // puts one event in the threads event queue
+    exec();
+    timer.stop();
+}
+
+void SendFrameClass::timerHit()
+{
+    sendFrame();
+}
+
+void SendFrameClass::sendFrame()
 {
     static const QGamepadManager::GamepadButton hidButtonsAB[] = {
         getButton("Button/3DS_A"),
@@ -49,6 +67,8 @@ void sendFrame()
         getButton("Button/3DS_POWER"),
         getButton("Button/3DS_LPOWER"),
     };
+
+    qDebug() << "Sending";
 
     u32 hidPad = 0xfff;
     for(u32 i = 0; i < 2; i++)
