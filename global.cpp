@@ -3,6 +3,8 @@
 
 QSettings settings("TuxSH", "InputRedirectionClient-Qt");
 
+Worker worker;
+
 QGamepadManager::GamepadButtons buttons = 0;
 u32 interfaceButtons = 0;
 int yAxisMultiplier = 1, yAxisMultiplierCpp = 1;
@@ -13,10 +15,6 @@ bool isSmashingH = false;
 bool isSmashingV = false;
 bool rightStickFaceButtons = false;
 bool cStickDisabled = false;
-
-double lx = 0.0, ly = 0.0;
-double rx = 0.0, ry = 0.0;
-double previousLX = lx, previousLY = ly;
 
 GamepadConfigurator *gpConfigurator;
 
@@ -68,7 +66,40 @@ QGamepadManager::GamepadButton irButtons[2] = {
     variantToButton(settings.value("ButtonZL", QGamepadManager::ButtonL2))};
 
 
-void sendFrame(void)
+void Worker::setLeftAxis(double x, double y)
+{
+    leftAxis.x = x;
+    leftAxis.y = y;
+}
+
+void Worker::setRightAxis(double x, double y)
+{
+    rightAxis.x = x;
+    rightAxis.y = y;
+}
+
+void Worker::setPreviousLAxis(double x, double y)
+{
+    previousLeftAxis.x = x;
+    previousLeftAxis.y = y;
+}
+
+MyAxis Worker::getLeftAxis()
+{
+    return leftAxis;
+}
+
+MyAxis Worker::getRightAxis()
+{
+    return rightAxis;
+}
+
+MyAxis Worker::getPreviousLAxis()
+{
+    return previousLeftAxis;
+}
+
+void Worker::sendFrame(void)
 {
     u32 hidPad = 0xfff;
     for(u32 i = 0; i < 2; i++)
@@ -110,23 +141,23 @@ void sendFrame(void)
         touchScreenState = (1 << 24) | (y << 12) | x;
     }
 
-    if(lx != 0.0 || ly != 0.0)
+    if(leftAxis.x != 0.0 || leftAxis.y != 0.0)
       {
-          u32 x = (u32)(lx * CPAD_BOUND + 0x800);
-          u32 y = (u32)(ly * CPAD_BOUND + 0x800);
-          x = x >= 0xfff ? (lx < 0.0 ? 0x000 : 0xfff) : x;
-          y = y >= 0xfff ? (ly < 0.0 ? 0x000 : 0xfff) : y;
+          u32 x = (u32)(leftAxis.x * CPAD_BOUND + 0x800);
+          u32 y = (u32)(leftAxis.y * CPAD_BOUND + 0x800);
+          x = x >= 0xfff ? (leftAxis.x < 0.0 ? 0x000 : 0xfff) : x;
+          y = y >= 0xfff ? (leftAxis.y < 0.0 ? 0x000 : 0xfff) : y;
 
           circlePadState = (y << 12) | x;
       }
 
-      if(rx != 0.0 || ry != 0.0 || irButtonsState != 0)
+      if(rightAxis.x != 0.0 || rightAxis.y != 0.0 || irButtonsState != 0)
       {
           // We have to rotate the c-stick position 45°. Thanks, Nintendo.
-          u32 x = (u32)(M_SQRT1_2 * (rx + ry) * CPP_BOUND + 0x80);
-          u32 y = (u32)(M_SQRT1_2 * (ry - rx) * CPP_BOUND + 0x80);
-          x = x >= 0xff ? (rx < 0.0 ? 0x00 : 0xff) : x;
-          y = y >= 0xff ? (ry < 0.0 ? 0x00 : 0xff) : y;
+          u32 x = (u32)(M_SQRT1_2 * (rightAxis.x + rightAxis.y) * CPP_BOUND + 0x80);
+          u32 y = (u32)(M_SQRT1_2 * (rightAxis.y - rightAxis.x) * CPP_BOUND + 0x80);
+          x = x >= 0xff ? (rightAxis.x < 0.0 ? 0x00 : 0xff) : x;
+          y = y >= 0xff ? (rightAxis.y < 0.0 ? 0x00 : 0xff) : y;
 
           cppState = (y << 24) | (x << 16) | (irButtonsState << 8) | 0x81;
       }

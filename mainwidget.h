@@ -13,12 +13,12 @@
 class Widget : public QWidget
 {
 private:
-    QVBoxLayout *layout;
-    QFormLayout *formLayout;
-    QPushButton *homeButton, *powerButton, *longPowerButton, *remapConfigButton,
-        *enableTimerButton, *clearImageButton, *configGamepadButton;
-    QLineEdit *addrLineEdit;
-    QSlider *touchOpacitySlider;
+    QVBoxLayout  *layout;
+    QFormLayout  *formLayout;
+    QPushButton  *homeButton, *powerButton, *longPowerButton, *remapConfigButton,
+                 *clearImageButton, *configGamepadButton;
+    QLineEdit    *addrLineEdit;
+    QSlider      *touchOpacitySlider;
     ConfigWindow *remapConfig;
 
 public:
@@ -30,11 +30,9 @@ public:
 
         addrLineEdit = new QLineEdit(this);
         addrLineEdit->setClearButtonEnabled(true);
-        enableTimerButton = new QPushButton(tr("DISABLED"), this);
 
         formLayout = new QFormLayout;
         formLayout->addRow(tr("IP &address"), addrLineEdit);
-        formLayout->addRow(tr("Frame &Timer"), enableTimerButton);
 
         touchOpacitySlider = new QSlider(Qt::Horizontal);
         touchOpacitySlider->setRange(1, 10);
@@ -42,12 +40,12 @@ public:
         touchOpacitySlider->setTickInterval(1);
         formLayout->addRow(tr("TS &Opacity"), touchOpacitySlider);
 
-        homeButton = new QPushButton(tr("&HOME"), this);
-        powerButton = new QPushButton(tr("&POWER"), this);
-        longPowerButton = new QPushButton(tr("POWER (&long)"), this);
-        remapConfigButton = new QPushButton(tr("BUTTON &CONFIG"), this);
-        clearImageButton = new QPushButton(tr("&CLEAR IMAGE"), this);
-        configGamepadButton = new QPushButton(tr("&CONFIGURE GAMEPAD"));
+        homeButton = new QPushButton(tr("&Home"), this);
+        powerButton = new QPushButton(tr("&Power"), this);
+        longPowerButton = new QPushButton(tr("Power (&long)"), this);
+        remapConfigButton = new QPushButton(tr("&Settings"), this);
+        clearImageButton = new QPushButton(tr("&Clear Image"), this);
+        configGamepadButton = new QPushButton(tr("&Configure Custom Gamepad"));
 
         layout->addLayout(formLayout);
         layout->addWidget(homeButton);
@@ -72,38 +70,22 @@ public:
            gpConfigurator->showGui();
          });
 
-        connect(enableTimerButton, &QPushButton::released, this,
-                [this](void)
-        {
-            if (!timerEnabled)
-            {
-                timerEnabled = true;
-                enableTimerButton->setText("ENABLED");
-            } else {
-                timerEnabled = false;
-                enableTimerButton->setText("DISABLED");
-            }
-        });
-
         connect(homeButton, &QPushButton::pressed, this,
                 [](void)
         {
            interfaceButtons |= 1;
-           sendFrame();
         });
 
         connect(homeButton, &QPushButton::released, this,
                 [](void)
         {
            interfaceButtons &= ~1;
-           sendFrame();
         });
 
         connect(powerButton, &QPushButton::pressed, this,
                 [](void)
         {
            interfaceButtons |= 2;
-           sendFrame();
         });
 
         connect(QGamepadManager::instance(), &QGamepadManager::gamepadButtonReleaseEvent, this,
@@ -147,21 +129,21 @@ public:
                 [](void)
         {
            interfaceButtons &= ~2;
-           sendFrame();
+           //sendFrame();
         });
 
         connect(longPowerButton, &QPushButton::pressed, this,
                 [](void)
         {
            interfaceButtons |= 4;
-           sendFrame();
+           //sendFrame();
         });
 
         connect(longPowerButton, &QPushButton::released, this,
                 [](void)
         {
            interfaceButtons &= ~4;
-           sendFrame();
+           //sendFrame();
         });
 
         connect(remapConfigButton, &QPushButton::released, this,
@@ -217,11 +199,13 @@ public:
 
     virtual ~Widget(void)
     {
-        lx = ly = rx = ry = 0.0;
+        worker.setLeftAxis(0.0, 0.0);
+        worker.setRightAxis(0.0, 0.0);
+
         buttons = 0;
         interfaceButtons = 0;
         touchScreen->setTouchScreenPressed(false);
-        sendFrame();
+        //sendFrame();
         delete touchScreen;
         delete remapConfig;
     }

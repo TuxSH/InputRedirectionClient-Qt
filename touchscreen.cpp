@@ -68,7 +68,7 @@ void TouchScreen::mousePressEvent(QMouseEvent *ev)
     {
         touchScreenPressed = true;
         touchScreenPosition = ev->pos();
-        sendFrame();
+       // sendFrame();
     }
     if(ev->button() == Qt::RightButton)
     {
@@ -90,7 +90,7 @@ void TouchScreen::mouseMoveEvent(QMouseEvent *ev)
     if(touchScreenPressed && (ev->buttons() & Qt::LeftButton))
     {
         touchScreenPosition = ev->pos();
-        sendFrame();
+        //sendFrame();
     }
 }
 
@@ -99,14 +99,14 @@ void TouchScreen::mouseReleaseEvent(QMouseEvent *ev)
     if(ev->button() == Qt::LeftButton)
     {
         touchScreenPressed = false;
-        sendFrame();
+        //sendFrame();
     }
 }
 
 void TouchScreen::closeEvent(QCloseEvent *ev)
 {
     touchScreenPressed = false;
-    sendFrame();
+   // sendFrame();
     ev->accept();
 }
 
