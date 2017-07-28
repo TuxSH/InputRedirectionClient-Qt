@@ -47,6 +47,13 @@ public:
         clearImageButton = new QPushButton(tr("&Clear Image"), this);
         configGamepadButton = new QPushButton(tr("&Configure Custom Gamepad"));
 
+        // Disable/hide the configurator button if running windows since it's not supported
+         if (QSysInfo::productType() == "windows")
+         {
+             configGamepadButton->setEnabled(false);
+             configGamepadButton->setVisible(false);
+         }
+
         layout->addLayout(formLayout);
         layout->addWidget(homeButton);
         layout->addWidget(powerButton);
