@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
     QObject::connect(thread, SIGNAL (finished()), thread, SLOT (deleteLater()));
     QObject::connect(&timer, SIGNAL(timeout()), &worker, SLOT(sendFrame()));
     thread->start();
-
-    return a.exec();
+    a.exec();
+    worker.closeThread();
+    return 0;
 }

@@ -35,6 +35,12 @@ public:
     void updatePixmap(void);
     void clearImage(void);
     void paintEvent(QPaintEvent* e);
+
+   ~TouchScreen(void)
+    {
+        qDebug() << "DECON";
+        tsShortcutGui.close();
+    }
 };
 
 #endif // TOUCHSCREEN_H

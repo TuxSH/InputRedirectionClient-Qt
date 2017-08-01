@@ -54,7 +54,8 @@ public:
         setContextMenuPolicy(Qt::CustomContextMenu);
 
         // Disable/hide the configurator button if running windows since it's not supported
-         if (QSysInfo::productType() == "windows")
+         if (QSysInfo::productType() == "windows" ||
+             QSysInfo::productType() == "osx")
          {
              configGamepadButton->setEnabled(false);
              configGamepadButton->setVisible(false);
@@ -177,14 +178,12 @@ public:
             touchScreen->update();
         });
 
-
         touchScreen = new TouchScreen(nullptr);
         settingsConfig = new ConfigWindow(nullptr, touchScreen);
         this->setWindowTitle(tr("InputRedirectionClient-Qt"));
 
         addrLineEdit->setText(settings.value("ipAddress", "").toString());
     }
-
 
     void show(void)
     {
@@ -212,6 +211,9 @@ public:
          }
         touchScreen->close();
         settingsConfig->close();
+
+        touchScreen->setTouchScreenPressed(false);
+        delete touchScreen;
         ev->accept();
     }
 
@@ -224,7 +226,7 @@ public:
     //When main window is opened, load shortcut settings
     void showEvent(QShowEvent* event)
     {
-        int id = qRegisterMetaType<ShortCut>("ShortCut");
+        qRegisterMetaType<ShortCut>("ShortCut");
         qRegisterMetaTypeStreamOperators<ShortCut>("ShortCut");
 
     QString valName = "tsShortcut0";
@@ -244,7 +246,7 @@ public:
          }
          else
          {
-             settings.remove("tsShortcut"+i);
+             settings.remove(tr("tsShortcut%1").arg(i));
          }
 
      }
@@ -257,8 +259,7 @@ public:
 
         buttons = 0;
         interfaceButtons = 0;
-        touchScreen->setTouchScreenPressed(false);
-        delete touchScreen;
+
         delete settingsConfig;
     }
 };

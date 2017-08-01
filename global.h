@@ -102,6 +102,7 @@ class Worker : public QObject {
     void setLeftAxis(double x, double y);
     void setRightAxis(double x, double y);
     void setPreviousLAxis(double x, double y);
+    void closeThread() { emit finished(); }
 
     explicit Worker(QObject *parent = 0) : QObject(parent)
     {

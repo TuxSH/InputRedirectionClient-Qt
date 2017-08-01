@@ -12,11 +12,9 @@ class TsShortcut : public QWidget
 {
 private:
     QString wTitle;
-    QPushButton  *acceptButton;
     QVBoxLayout  *layout;
     QFormLayout  *formLayout;
     QListWidget    *lstWidget;
-    QGamepadManager::GamepadButton btnToMap;
     QLabel       *lblDirections;
     QPushButton  *btnColorDialog, *btnCreateShort,
                  *btnDelShort, *btnHelp, *btnPressNow;

@@ -220,3 +220,4 @@ void TouchScreen::clearImage(void)
     settings.setValue("tsBackgroundImage", "");
     updatePixmap();
 }
+

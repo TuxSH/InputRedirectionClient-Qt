@@ -1,4 +1,5 @@
 #include "global.h"
+#include <math.h>
 #include "gpmanager.h"
 
 QSettings settings("TuxSH", "InputRedirectionClient-Qt");
@@ -6,6 +7,7 @@ QSettings settings("TuxSH", "InputRedirectionClient-Qt");
 Worker worker;
 Settings btnSettings;
 double tsRatio;
+
 std::vector<ShortCut> listShortcuts;
 
 QGamepadManager::GamepadButtons buttons = 0;
