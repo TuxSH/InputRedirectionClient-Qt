@@ -14,21 +14,18 @@ private:
                 *comboBoxUp, *comboBoxDown, *comboBoxLeft,
                 *comboBoxRight, *comboBoxStart, *comboBoxSelect,
                 *comboBoxZL, *comboBoxZR, *comboBoxHome,
-                *comboBoxPower, *comboBoxPowerLong,
-                *comboBoxTouch1, *comboBoxTouch2, *comboBoxTouch3,
-                *comboBoxTouch4;
+                *comboBoxPower, *comboBoxPowerLong;
 
-    QLineEdit   *touchButton1XEdit, *touchButton1YEdit, *touchButton3XEdit,
-                *touchButton3YEdit,*touchButton2XEdit, *touchButton2YEdit,
-                *touchButton4XEdit, *touchButton4YEdit;
-
-    QPushButton *saveButton, *closeButton;
+    QPushButton *saveButton;
 
     QCheckBox   *invertYCheckbox, *invertYCppCheckbox, *swapSticksCheckbox,
                 *mhCameraCheckbox, *rsSmashCheckbox,
                 *disableCStickCheckbox, *rsFaceButtonsCheckbox;
 
     QComboBox* populateItems(QGamepadManager::GamepadButton button);
+
+    QLineEdit *txtStickVal, *txtCppVal;
+    QValidator *validator;
 
     QVariant currentData(QComboBox *comboBox);
 

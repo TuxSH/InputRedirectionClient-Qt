@@ -4,27 +4,24 @@
 QSettings settings("TuxSH", "InputRedirectionClient-Qt");
 
 Worker worker;
+Settings btnSettings;
+double tsRatio;
+std::vector<ShortCut> listShortcuts;
 
 QGamepadManager::GamepadButtons buttons = 0;
 u32 interfaceButtons = 0;
 int yAxisMultiplier = 1, yAxisMultiplierCpp = 1;
 bool shouldSwapStick = false;
-bool monsterHunterCamera = false;
-bool rightStickSmash = false;
-bool isSmashingH = false;
-bool isSmashingV = false;
-bool rightStickFaceButtons = false;
-bool cStickDisabled = false;
+int CPAD_BOUND = (settings.contains("StickBound") ? settings.value("StickBound").toInt() : 1488);
+int CPP_BOUND = (settings.contains("CppBound") ? settings.value("CppBound").toInt() : 127);
 
 GamepadConfigurator *gpConfigurator;
 
 QString ipAddress;
-bool timerEnabled = false;
 
 bool touchScreenPressed;
-QSize touchScreenSize;
+QSize touchScreenSize = QSize(TOUCH_SCREEN_WIDTH, TOUCH_SCREEN_HEIGHT);
 QPoint touchScreenPosition;
-double tsRatio = 1;
 
 QGamepadManager::GamepadButton homeButton = variantToButton(settings.value("ButtonHome", QGamepadManager::ButtonInvalid));
 QGamepadManager::GamepadButton powerButton = variantToButton(settings.value("ButtonPower", QGamepadManager::ButtonInvalid));
@@ -34,14 +31,18 @@ QGamepadManager::GamepadButton touchButton1 = variantToButton(settings.value("Bu
 QGamepadManager::GamepadButton touchButton2 = variantToButton(settings.value("ButtonT2", QGamepadManager::ButtonInvalid));
 QGamepadManager::GamepadButton touchButton3 = variantToButton(settings.value("ButtonT3", QGamepadManager::ButtonInvalid));
 QGamepadManager::GamepadButton touchButton4 = variantToButton(settings.value("ButtonT4", QGamepadManager::ButtonInvalid));
-int touchButton1X = settings.value("touchButton1X", 0).toInt();
-int touchButton1Y = settings.value("touchButton1Y", 0).toInt();
-int touchButton2X = settings.value("touchButton2X", 0).toInt();
-int touchButton2Y = settings.value("touchButton2Y", 0).toInt();
-int touchButton3X = settings.value("touchButton3X", 0).toInt();
-int touchButton3Y = settings.value("touchButton3Y", 0).toInt();
-int touchButton4X = settings.value("touchButton4X", 0).toInt();
-int touchButton4Y = settings.value("touchButton4Y", 0).toInt();
+
+TouchButton tbOne={.x=settings.value("touchButton1X").toInt(),
+                   .y=settings.value("touchButton1Y").toInt()};
+
+TouchButton tbTwo={.x=settings.value("touchButton2X").toInt(),
+                   .y=settings.value("touchButton2Y").toInt()};
+
+TouchButton tbThree={.x=settings.value("touchButton3X").toInt(),
+                     .y=settings.value("touchButton3Y").toInt()};
+
+TouchButton tbFour={.x=settings.value("touchButton4X").toInt(),
+                    .y=settings.value("touchButton4Y").toInt()};
 
 QGamepadManager::GamepadButton hidButtonsAB[2]={
 variantToButton(settings.value("ButtonA", QGamepadManager::ButtonA)),
@@ -133,10 +134,11 @@ void Worker::sendFrame(void)
 
     if(touchScreenPressed)
     {
+
         u32 x = (u32)(0xfff * std::min(std::max(0, touchScreenPosition.x()),
-                                       touchScreenSize.width())) / touchScreenSize.width();
+                                       TOUCH_SCREEN_WIDTH*touchScreenPosition.x())) / touchScreenSize.width();
         u32 y = (u32)(0xfff * std::min(std::max(0, touchScreenPosition.y()),
-                                       touchScreenSize.height())) / touchScreenSize.height();
+                                       TOUCH_SCREEN_HEIGHT*touchScreenPosition.y())) / touchScreenSize.height();
 
         touchScreenState = (1 << 24) | (y << 12) | x;
     }
@@ -178,4 +180,16 @@ QGamepadManager::GamepadButton variantToButton(QVariant variant)
     button = static_cast<QGamepadManager::GamepadButton>(variant.toInt());
 
     return button;
+}
+
+int appScreenTo3dsX(int posX)
+{
+    qDebug() << "PosX: " << posX;
+    return TOUCH_SCREEN_WIDTH*((touchScreenSize.height()*posX)/TOUCH_SCREEN_HEIGHT)/touchScreenSize.width();
+}
+
+int appScreenTo3dsY(int posY)
+{
+    qDebug() << "PosX: " << posY;
+    return TOUCH_SCREEN_HEIGHT*((touchScreenSize.width()*posY)/TOUCH_SCREEN_WIDTH)/touchScreenSize.height();
 }

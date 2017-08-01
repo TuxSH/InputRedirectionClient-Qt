@@ -4,6 +4,7 @@
 #include "global.h"
 
 #include <QMessageBox>
+#include <QVariant>
 
 #include "touchscreen.h"
 #include "configwindow.h"
@@ -12,14 +13,17 @@
 
 class Widget : public QWidget
 {
+
+private slots:
+    void ShowContextMenu(const QPoint &pos);
 private:
     QVBoxLayout  *layout;
     QFormLayout  *formLayout;
-    QPushButton  *homeButton, *powerButton, *longPowerButton, *remapConfigButton,
+    QPushButton  *homeButton, *powerButton, *longPowerButton, *settingsConfigButton,
                  *clearImageButton, *configGamepadButton;
     QLineEdit    *addrLineEdit;
     QSlider      *touchOpacitySlider;
-    ConfigWindow *remapConfig;
+    ConfigWindow *settingsConfig;
 
 public:
     TouchScreen *touchScreen;
@@ -31,11 +35,11 @@ public:
         addrLineEdit = new QLineEdit(this);
         addrLineEdit->setClearButtonEnabled(true);
 
-        formLayout = new QFormLayout;
+        formLayout = new QFormLayout();
         formLayout->addRow(tr("IP &address"), addrLineEdit);
 
         touchOpacitySlider = new QSlider(Qt::Horizontal);
-        touchOpacitySlider->setRange(1, 10);
+        touchOpacitySlider->setRange(0, 10);
         touchOpacitySlider->setValue(10);
         touchOpacitySlider->setTickInterval(1);
         formLayout->addRow(tr("TS &Opacity"), touchOpacitySlider);
@@ -43,9 +47,11 @@ public:
         homeButton = new QPushButton(tr("&Home"), this);
         powerButton = new QPushButton(tr("&Power"), this);
         longPowerButton = new QPushButton(tr("Power (&long)"), this);
-        remapConfigButton = new QPushButton(tr("&Settings"), this);
+        settingsConfigButton = new QPushButton(tr("&Settings"), this);
         clearImageButton = new QPushButton(tr("&Clear Image"), this);
         configGamepadButton = new QPushButton(tr("&Configure Custom Gamepad"));
+
+        setContextMenuPolicy(Qt::CustomContextMenu);
 
         // Disable/hide the configurator button if running windows since it's not supported
          if (QSysInfo::productType() == "windows")
@@ -59,7 +65,7 @@ public:
         layout->addWidget(powerButton);
         layout->addWidget(longPowerButton);
         layout->addWidget(configGamepadButton);
-        layout->addWidget(remapConfigButton);
+        layout->addWidget(settingsConfigButton);
         layout->addWidget(clearImageButton);
 
         gpConfigurator = new GamepadConfigurator();
@@ -109,8 +115,6 @@ public:
             }
 
                 buttons &= QGamepadManager::GamepadButtons(~(1 << button));
-               // sendFrame();
-
         });
 
         connect(gpConfigurator->skipButton, &QPushButton::released, this,
@@ -130,37 +134,34 @@ public:
                msgBox->setInformativeText("Please restart the program for changes to take affect.");
                msgBox->show();
 
-});
+        });
 
         connect(powerButton, &QPushButton::released, this,
                 [](void)
         {
            interfaceButtons &= ~2;
-           //sendFrame();
         });
 
         connect(longPowerButton, &QPushButton::pressed, this,
                 [](void)
         {
            interfaceButtons |= 4;
-           //sendFrame();
         });
 
         connect(longPowerButton, &QPushButton::released, this,
                 [](void)
         {
            interfaceButtons &= ~4;
-           //sendFrame();
         });
 
-        connect(remapConfigButton, &QPushButton::released, this,
+        connect(settingsConfigButton, &QPushButton::released, this,
                 [this](void)
         {
-            if (!remapConfig->isVisible())
+            if (!settingsConfig->isVisible())
             {
-                remapConfig->move(this->x() - remapConfig->width() - 5,this->y());
-                remapConfig->show();
-            } else remapConfig->hide();
+                settingsConfig->move(this->x() - settingsConfig->width() - 5,this->y());
+                settingsConfig->show();
+            } else settingsConfig->hide();
         });
 
         connect(clearImageButton, &QPushButton::released, this,
@@ -178,30 +179,75 @@ public:
 
 
         touchScreen = new TouchScreen(nullptr);
-        remapConfig = new ConfigWindow(nullptr, touchScreen);
+        settingsConfig = new ConfigWindow(nullptr, touchScreen);
         this->setWindowTitle(tr("InputRedirectionClient-Qt"));
 
         addrLineEdit->setText(settings.value("ipAddress", "").toString());
     }
+
 
     void show(void)
     {
         QWidget::show();
         touchScreen->move(this->x() + this->width() + 5,this->y());
         touchScreen->show();
-        remapConfig->hide();
+        settingsConfig->hide();
     }
 
+    //When closing, save shortcuts
     void closeEvent(QCloseEvent *ev)
     {
+        //Save shortcuts
+        unsigned int i = 0;
+        for (i=0; i<listShortcuts.size(); i++)
+         {
+            QString valName = tr("tsShortcut%1").arg(i);
+             settings.setValue(valName, qVariantFromValue(listShortcuts[i]));
+         }
+
+        //Remove leftover settings
+        for(; settings.contains(tr("tsShortcut%1").arg(i)); i++)
+         {
+             settings.remove(tr("tsShortcut%1").arg(i));
+         }
         touchScreen->close();
-        remapConfig->close();
+        settingsConfig->close();
         ev->accept();
     }
 
+    //Move touchscreen window with main window if moved
     void moveEvent(QMoveEvent *event)
     {
         touchScreen->move(touchScreen->pos() + (event->pos() - event->oldPos()));
+    }
+
+    //When main window is opened, load shortcut settings
+    void showEvent(QShowEvent* event)
+    {
+        int id = qRegisterMetaType<ShortCut>("ShortCut");
+        qRegisterMetaTypeStreamOperators<ShortCut>("ShortCut");
+
+    QString valName = "tsShortcut0";
+    for(int i = 0; settings.contains(valName); i++)
+     {
+        valName = tr("tsShortcut%1").arg(i);
+        QVariant variant = settings.value(valName);
+
+        ShortCut curShort = variant.value<ShortCut>();
+         if(variant.isValid() && curShort.name != "")
+         {
+             if(curShort.name != "")
+             {
+              listShortcuts.push_back(curShort);
+             }
+
+         }
+         else
+         {
+             settings.remove("tsShortcut"+i);
+         }
+
+     }
     }
 
     virtual ~Widget(void)
@@ -212,9 +258,8 @@ public:
         buttons = 0;
         interfaceButtons = 0;
         touchScreen->setTouchScreenPressed(false);
-        //sendFrame();
         delete touchScreen;
-        delete remapConfig;
+        delete settingsConfig;
     }
 };
 

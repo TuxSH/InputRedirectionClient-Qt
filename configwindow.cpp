@@ -3,8 +3,7 @@
 
 ConfigWindow::ConfigWindow(QWidget *parent, TouchScreen *ts) : QDialog(parent)
 {
-    this->setFixedSize(TOUCH_SCREEN_WIDTH, 700);
-    this->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint);
+    this->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
     this->setWindowTitle(tr("InputRedirectionClient-Qt - Button Config"));
 
     comboBoxA = populateItems(variantToButton(settings.value("ButtonA", QGamepadManager::ButtonA)));
@@ -24,38 +23,18 @@ ConfigWindow::ConfigWindow(QWidget *parent, TouchScreen *ts) : QDialog(parent)
     comboBoxHome = populateItems(variantToButton(settings.value("ButtonHome", QGamepadManager::ButtonInvalid)));
     comboBoxPower = populateItems(variantToButton(settings.value("ButtonPower", QGamepadManager::ButtonInvalid)));
     comboBoxPowerLong = populateItems(variantToButton(settings.value("ButtonPowerLong", QGamepadManager::ButtonInvalid)));
-    comboBoxTouch1 = populateItems(variantToButton(settings.value("ButtonT1", QGamepadManager::ButtonInvalid)));
-    comboBoxTouch2 = populateItems(variantToButton(settings.value("ButtonT2", QGamepadManager::ButtonInvalid)));
-    comboBoxTouch3 = populateItems(variantToButton(settings.value("ButtonT3", QGamepadManager::ButtonInvalid)));
-    comboBoxTouch4 = populateItems(variantToButton(settings.value("ButtonT4", QGamepadManager::ButtonInvalid)));
+    txtCppVal = new QLineEdit();
+    txtStickVal = new QLineEdit();
+    validator = new QIntValidator();
 
-    touchButton1XEdit = new QLineEdit(this);
-    touchButton1XEdit->setClearButtonEnabled(true);
-    touchButton1XEdit->setText(settings.value("touchButton1X", "0").toString());
-    touchButton1YEdit = new QLineEdit(this);
-    touchButton1YEdit->setClearButtonEnabled(true);
-    touchButton1YEdit->setText(settings.value("touchButton1Y", "0").toString());
+    txtCppVal->setValidator(validator);
+    txtStickVal->setValidator(validator);
 
-    touchButton2XEdit = new QLineEdit(this);
-    touchButton2XEdit->setClearButtonEnabled(true);
-    touchButton2XEdit->setText(settings.value("touchButton2X", "0").toString());
-    touchButton2YEdit = new QLineEdit(this);
-    touchButton2YEdit->setClearButtonEnabled(true);
-    touchButton2YEdit->setText(settings.value("touchButton2Y", "0").toString());
+    txtCppVal->setText(tr("%1").arg(CPP_BOUND));
+    txtStickVal->setText(tr("%1").arg(CPAD_BOUND));
 
-    touchButton3XEdit = new QLineEdit(this);
-    touchButton3XEdit->setClearButtonEnabled(true);
-    touchButton3XEdit->setText(settings.value("touchButton3X", "0").toString());
-    touchButton3YEdit = new QLineEdit(this);
-    touchButton3YEdit->setClearButtonEnabled(true);
-    touchButton3YEdit->setText(settings.value("touchButton3Y", "0").toString());
-
-    touchButton4XEdit = new QLineEdit(this);
-    touchButton4XEdit->setClearButtonEnabled(true);
-    touchButton4XEdit->setText(settings.value("touchButton4X", "0").toString());
-    touchButton4YEdit = new QLineEdit(this);
-    touchButton4YEdit->setClearButtonEnabled(true);
-    touchButton4YEdit->setText(settings.value("touchButton4Y", "0").toString());
+    txtCppVal->setClearButtonEnabled(true);
+    txtStickVal->setClearButtonEnabled(true);
 
     invertYCheckbox = new QCheckBox(this);
     invertYCppCheckbox = new QCheckBox(this);
@@ -66,7 +45,6 @@ ConfigWindow::ConfigWindow(QWidget *parent, TouchScreen *ts) : QDialog(parent)
     disableCStickCheckbox = new QCheckBox();
 
     saveButton = new QPushButton(tr("&SAVE"), this);
-    closeButton = new QPushButton(tr("&CANCEL"), this);
 
     layout = new QGridLayout(this);
 
@@ -108,6 +86,10 @@ ConfigWindow::ConfigWindow(QWidget *parent, TouchScreen *ts) : QDialog(parent)
     layout->addWidget(comboBoxPowerLong, 7, 3);
     layout->addWidget(new QLabel("Home Button"), 8, 0, 1, 2);
     layout->addWidget(comboBoxHome, 8, 1, 1, 2);
+    layout->addWidget(new QLabel("Stick Range:"), 9, 0);
+    layout->addWidget(txtStickVal, 9, 1, 2, 2);
+    layout->addWidget(new QLabel("CPP Range:"), 11, 0);
+    layout->addWidget(txtCppVal, 11, 1, 2, 2);
 
     layout->addWidget(new QLabel("Invert Y axis"), 17, 0);
     layout->addWidget(invertYCheckbox, 17, 1);
@@ -125,82 +107,7 @@ ConfigWindow::ConfigWindow(QWidget *parent, TouchScreen *ts) : QDialog(parent)
     layout->addWidget(new QLabel("RS as ABXY"), 19, 2);
     layout->addWidget(rsFaceButtonsCheckbox, 19, 3);
 
-    layout->addWidget(new QLabel("Touch R"), 9, 0, 1, 2);
-    layout->addWidget(comboBoxTouch1, 9, 1, 1, 2);
-    layout->addWidget(new QLabel("X"), 10, 0);
-    layout->addWidget(touchButton1XEdit, 10, 1);
-    layout->addWidget(new QLabel("Y"), 10, 2);
-    layout->addWidget(touchButton1YEdit, 10, 3);
-    layout->addWidget(new QLabel("Touch B"), 11, 0, 1, 2);
-    layout->addWidget(comboBoxTouch2, 11, 1, 1, 2);
-    layout->addWidget(new QLabel("X"), 12, 0);
-    layout->addWidget(touchButton2XEdit, 12, 1);
-    layout->addWidget(new QLabel("Y"), 12, 2);
-    layout->addWidget(touchButton2YEdit, 12, 3);
-    layout->addWidget(new QLabel("Touch G"), 13, 0, 1, 2);
-    layout->addWidget(comboBoxTouch3, 13, 1, 1, 2);
-    layout->addWidget(new QLabel("X"), 14, 0);
-    layout->addWidget(touchButton3XEdit, 14, 1);
-    layout->addWidget(new QLabel("Y"), 14, 2);
-    layout->addWidget(touchButton3YEdit, 14, 3);
-    layout->addWidget(new QLabel("Touch Y"), 15, 0, 1, 2);
-    layout->addWidget(comboBoxTouch4, 15, 1, 1, 2);
-    layout->addWidget(new QLabel("X"), 16, 0);
-    layout->addWidget(touchButton4XEdit, 16, 1);
-    layout->addWidget(new QLabel("Y"), 16, 2);
-    layout->addWidget(touchButton4YEdit, 16, 3);
-
-    layout->addWidget(saveButton, 21, 0, 1, 2);
-    layout->addWidget(closeButton, 21, 2, 1, 2);
-
-    connect(touchButton1XEdit, &QLineEdit::textChanged, this,
-            [ts](const QString &text)
-    {
-        touchButton1X = text.toUInt();
-        settings.setValue("touchButton1X", text);
-    });
-    connect(touchButton1YEdit, &QLineEdit::textChanged, this,
-            [ts](const QString &text)
-    {
-        touchButton1Y = text.toUInt();
-        settings.setValue("touchButton1Y", text);
-    });
-    connect(touchButton2XEdit, &QLineEdit::textChanged, this,
-            [ts](const QString &text)
-    {
-        touchButton2X = text.toUInt();
-        settings.setValue("touchButton2X", text);
-    });
-    connect(touchButton2YEdit, &QLineEdit::textChanged, this,
-            [ts](const QString &text)
-    {
-        touchButton2Y = text.toUInt();
-        settings.setValue("touchButton2Y", text);
-    });
-    connect(touchButton3XEdit, &QLineEdit::textChanged, this,
-            [ts](const QString &text)
-    {
-        touchButton3X = text.toUInt();
-        settings.setValue("touchButton3X", text);
-    });
-    connect(touchButton3YEdit, &QLineEdit::textChanged, this,
-            [ts](const QString &text)
-    {
-        touchButton3Y = text.toUInt();
-        settings.setValue("touchButton3Y", text);
-    });
-    connect(touchButton4XEdit, &QLineEdit::textChanged, this,
-            [ts](const QString &text)
-    {
-        touchButton4X = text.toUInt();
-        settings.setValue("touchButton4X", text);
-    });
-    connect(touchButton4YEdit, &QLineEdit::textChanged, this,
-            [ts](const QString &text)
-    {
-        touchButton4Y = text.toUInt();
-        settings.setValue("touchButton4Y", text);
-    });
+    layout->addWidget(saveButton, 21, 1, 1, 2);
 
     connect(invertYCheckbox, &QCheckBox::stateChanged, this,
             [](int state)
@@ -236,17 +143,18 @@ ConfigWindow::ConfigWindow(QWidget *parent, TouchScreen *ts) : QDialog(parent)
         }
     });
 
+
     connect(swapSticksCheckbox, &QCheckBox::stateChanged, this,
             [](int state)
     {
         switch(state)
         {
             case Qt::Unchecked:
-                shouldSwapStick = false;
+                btnSettings.setShouldSwapStick(false);
                 settings.setValue("swapSticks", false);
                 break;
             case Qt::Checked:
-                shouldSwapStick = true;
+                btnSettings.setShouldSwapStick(true);
                 settings.setValue("swapSticks", true);
                 break;
             default: break;
@@ -260,11 +168,11 @@ ConfigWindow::ConfigWindow(QWidget *parent, TouchScreen *ts) : QDialog(parent)
          switch(state)
          {
              case Qt::Unchecked:
-                 rightStickSmash = false;
+                 btnSettings.setRightStickSmash(false);
                  settings.setValue("rightStickSmash", false);
                  break;
              case Qt::Checked:
-                 rightStickSmash = true;
+                 btnSettings.setRightStickSmash(true);
                  settings.setValue("rightStickSmash", true);
                  break;
              default: break;
@@ -278,11 +186,11 @@ ConfigWindow::ConfigWindow(QWidget *parent, TouchScreen *ts) : QDialog(parent)
         switch(state)
         {
             case Qt::Unchecked:
-                monsterHunterCamera = false;
+               btnSettings.setMonsterHunterCamera(false);
                 settings.setValue("monsterHunterCamera", false);
                 break;
             case Qt::Checked:
-                monsterHunterCamera = true;
+                btnSettings.setMonsterHunterCamera(true);
                 settings.setValue("monsterHunterCamera", true);
                 break;
             default: break;
@@ -294,11 +202,11 @@ ConfigWindow::ConfigWindow(QWidget *parent, TouchScreen *ts) : QDialog(parent)
         switch(state)
         {
             case Qt::Unchecked:
-                cStickDisabled = false;
+                btnSettings.setCStickDisabled(false);
                 settings.setValue("cStickDisable", false);
                 break;
             case Qt::Checked:
-                cStickDisabled = true;
+                btnSettings.setCStickDisabled(true);
                 settings.setValue("cStickDisable", true);
                 break;
             default: break;
@@ -310,11 +218,11 @@ ConfigWindow::ConfigWindow(QWidget *parent, TouchScreen *ts) : QDialog(parent)
         switch(state)
         {
             case Qt::Unchecked:
-                rightStickFaceButtons = false;
+                btnSettings.setRightStickFaceButtons(false);
                 settings.setValue("rightStickABXY", false);
                 break;
             case Qt::Checked:
-                rightStickFaceButtons = true;
+                btnSettings.setRightStickFaceButtons(true);
                 settings.setValue("rightStickABXY", true);
                 break;
             default: break;
@@ -380,26 +288,13 @@ ConfigWindow::ConfigWindow(QWidget *parent, TouchScreen *ts) : QDialog(parent)
         homeButton = home;
         settings.setValue("ButtonHome", home);
 
-        QGamepadManager::GamepadButton t1 = variantToButton(currentData(comboBoxTouch1));
-        touchButton1 = t1;
-        settings.setValue("ButtonT1", t1);
-        QGamepadManager::GamepadButton t2 = variantToButton(currentData(comboBoxTouch2));
-        touchButton2 = t2;
-        settings.setValue("ButtonT2", t2);
-        QGamepadManager::GamepadButton t3 = variantToButton(currentData(comboBoxTouch3));
-        touchButton3 = t3;
-        settings.setValue("ButtonT3", t3);
-        QGamepadManager::GamepadButton t4 = variantToButton(currentData(comboBoxTouch4));
-        touchButton4 = t4;
-        settings.setValue("ButtonT4", t4);
+        CPP_BOUND = txtCppVal->text().toInt();
+        CPAD_BOUND = txtStickVal->text().toInt();
+        settings.setValue("StickBound", CPAD_BOUND);
+        settings.setValue("CppBound", CPP_BOUND);
 
         ts->updatePixmap();
 
-    });
-    connect(closeButton, &QPushButton::pressed, this,
-            [this](void)
-    {
-       this->hide();
     });
 
     invertYCheckbox->setChecked(settings.value("invertY", false).toBool());

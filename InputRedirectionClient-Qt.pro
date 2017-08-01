@@ -27,7 +27,9 @@ SOURCES += main.cpp \
     global.cpp \
     gpmanager.cpp \
     touchscreen.cpp \
-    configwindow.cpp
+    configwindow.cpp \
+    settings.cpp \
+    shortcut.cpp
 
 #HEADERS  += widget.h
 
@@ -37,4 +39,7 @@ HEADERS += \
     mainwidget.h \
     touchscreen.h \
     configwindow.h \
-    gpconfigurator.h
+    gpconfigurator.h \
+    settings.h \
+    tsshortcut.h \
+    shortcut.h

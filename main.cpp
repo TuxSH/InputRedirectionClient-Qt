@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
     w.show();
     QThread* thread = new QThread();
     QTimer timer;
-    timer.setInterval(50);
+    timer.setInterval(20);
 
     timer.moveToThread(thread);
     worker.moveToThread(thread);

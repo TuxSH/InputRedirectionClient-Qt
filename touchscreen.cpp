@@ -1,5 +1,6 @@
 #include "touchscreen.h"
 #include "global.h"
+#include <QMenu>
 
 void TouchScreen::setTouchScreenPressed(bool b)
 {
@@ -21,19 +22,93 @@ QPoint TouchScreen::getTouchScreenPosition()
     return touchScreenPosition;
 }
 
-TouchScreen::TouchScreen(QWidget *parent) : QDialog(parent)
+TouchScreen::TouchScreen(QWidget *parent) : QWidget(parent)
 {
     this->setWindowFlags(Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowMinimizeButtonHint);
     this->setWindowTitle(tr("InputRedirectionClient-Qt - Touch screen"));
+    this->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    connect(this, SIGNAL(customContextMenuRequested(const QPoint &)),
+            this, SLOT(ShowContextMenu(const QPoint&)));
 
     bgLabel = new QLabel(this);
 
     updatePixmap();
+    setMinimumWidth(TOUCH_SCREEN_WIDTH);
+    setMinimumHeight(TOUCH_SCREEN_HEIGHT);
 
-    bgLabel->setFixedHeight(TOUCH_SCREEN_HEIGHT);
-    bgLabel->setFixedWidth(TOUCH_SCREEN_WIDTH);
     bgLabel->setScaledContents(true);
     bgLabel->setSizePolicy( QSizePolicy::Ignored, QSizePolicy::Ignored );
+
+    ellipNeedDraw = true;
+}
+
+void TouchScreen::ShowContextMenu(const QPoint& pos)
+{
+    QMenu* myMenu = new QMenu();
+    QString strOpenOverlay = "Open Overlay Image...";
+    QString clearOverlayBtn = "Clear Overlay";
+    QString strPtToBtn = "Set point to button...";
+    QPoint globalPos = this->mapToGlobal(pos);
+
+    myMenu->addAction(strOpenOverlay);
+    myMenu->addAction(clearOverlayBtn);
+    myMenu->addSeparator();
+    myMenu->addAction(strPtToBtn);
+
+    myMenu->popup(globalPos);
+    QAction* selectedItem = myMenu->exec(globalPos);
+
+    QPoint newPos;
+    newPos.setX(pos.x());
+    newPos.setY(pos.y());
+    //If custom size, scale the point to orig 3ds touchscreen size
+    if(this->width() != TOUCH_SCREEN_WIDTH ||
+       this->height() != TOUCH_SCREEN_HEIGHT)
+    {
+        newPos.setX((TOUCH_SCREEN_WIDTH*pos.x())/this->width());
+        newPos.setY((TOUCH_SCREEN_HEIGHT*pos.y())/this->height());
+    }
+
+    //Update the shortcut gui position title text
+    tsShortcutGui.setCurrentPos(newPos);
+
+    if(!selectedItem)
+    {
+        myMenu->close();
+        return;
+    }
+
+    if(selectedItem->text() == strOpenOverlay)
+    {
+        QString strPic = QFileDialog::getOpenFileName(this,
+                       tr("Open Touchscreen Image (320x240)"), "MyDocuments",
+                       tr("Image Files (*.jpg *.jpeg *.png *.bmp *.gif *.pbm *.pgm *.ppm *.xbm *.xpm)"));
+
+         if(!strPic.isNull())
+         {
+             settings.setValue("tsBackgroundImage", strPic);
+             updatePixmap();
+         }
+    }
+
+    if(selectedItem->text() == strPtToBtn )
+    {
+        if(tsShortcutGui.isVisible())
+        {
+            tsShortcutGui.updateTitleText();
+        }
+
+        tsShortcutGui.setVisible(true);
+
+    }
+
+    if(selectedItem->text() == clearOverlayBtn)
+    {
+        clearImage();
+    }
+
+    myMenu->deleteLater();
 }
 
 void TouchScreen::resizeEvent(QResizeEvent* e)
@@ -51,7 +126,7 @@ void TouchScreen::resizeEvent(QResizeEvent* e)
         if(curWinSize.width() != newWinSize.width())
         {
             propWinSize.setWidth(newWinSize.width());
-           propWinSize.setHeight((TOUCH_SCREEN_HEIGHT*newWinSize.width())/TOUCH_SCREEN_WIDTH);
+            propWinSize.setHeight((TOUCH_SCREEN_HEIGHT*newWinSize.width())/TOUCH_SCREEN_WIDTH);
         }
 
         touchScreenSize = propWinSize;
@@ -68,20 +143,6 @@ void TouchScreen::mousePressEvent(QMouseEvent *ev)
     {
         touchScreenPressed = true;
         touchScreenPosition = ev->pos();
-       // sendFrame();
-    }
-    if(ev->button() == Qt::RightButton)
-    {
-
-       QString strPic = QFileDialog::getOpenFileName(this,
-                      tr("Open Touchscreen Image (320x240)"), "MyDocuments",
-                      tr("Image Files (*.jpg *.jpeg *.png *.bmp *.gif *.pbm *.pgm *.ppm *.xbm *.xpm)"));
-
-        if(!strPic.isNull())
-        {
-            settings.setValue("tsBackgroundImage", strPic);
-            updatePixmap();
-        }
     }
 }
 
@@ -90,7 +151,6 @@ void TouchScreen::mouseMoveEvent(QMouseEvent *ev)
     if(touchScreenPressed && (ev->buttons() & Qt::LeftButton))
     {
         touchScreenPosition = ev->pos();
-        //sendFrame();
     }
 }
 
@@ -99,20 +159,31 @@ void TouchScreen::mouseReleaseEvent(QMouseEvent *ev)
     if(ev->button() == Qt::LeftButton)
     {
         touchScreenPressed = false;
-        //sendFrame();
     }
 }
 
 void TouchScreen::closeEvent(QCloseEvent *ev)
 {
     touchScreenPressed = false;
-   // sendFrame();
     ev->accept();
 }
 
 void TouchScreen::updatePixmap(void)
 {
-    QString strPic = settings.value("tsBackgroundImage", "").toString();//qApp->QCoreApplication::applicationDirPath()+"/Touchscreen.jpg";
+    QString strPic = settings.value("tsBackgroundImage", "").toString();
+    QPixmap newPic(strPic);
+
+    if (newPic.isNull())
+    {
+        newPic = QPixmap(TOUCH_SCREEN_WIDTH, TOUCH_SCREEN_HEIGHT);
+        newPic.fill(Qt::transparent);
+    }
+}
+
+
+void TouchScreen::paintEvent(QPaintEvent* e)
+{
+    QString strPic = settings.value("tsBackgroundImage", "").toString();
     QPixmap newPic(strPic);
 
     if (newPic.isNull())
@@ -121,40 +192,27 @@ void TouchScreen::updatePixmap(void)
         newPic.fill(Qt::transparent);
     }
 
-    QPainter painter(&newPic);
-    QPen pen;
-    pen.setWidth(2);
 
-    if (touchButton1 != QGamepadManager::ButtonInvalid)
-    {
-        pen.setColor(Qt::red);
-        painter.setPen(pen);
+    QPainter painter;
+    painter.begin(&newPic);
+    painter.setBrush(QBrush(Qt::black));
+    painter.setRenderHint(QPainter::Antialiasing, true);
 
-        painter.drawEllipse(QPoint(touchButton1X, touchButton1Y), 3, 3);
-    }
-    if (touchButton2 != QGamepadManager::ButtonInvalid)
-    {
-        pen.setColor(Qt::blue);
-        painter.setPen(pen);
+     for (unsigned i=0; i<listShortcuts.size(); ++i)
+     {
+        ShortCut curShort = listShortcuts[i];
 
-        painter.drawEllipse(QPoint(touchButton2X, touchButton2Y), 3, 3);
-    }
-    if (touchButton3 != QGamepadManager::ButtonInvalid)
-    {
-        pen.setColor(Qt::green);
-        painter.setPen(pen);
+             painter.setBrush(QBrush(curShort.color));
+             painter.drawEllipse(TOUCH_SCREEN_WIDTH*((this->height()*curShort.pos.x())/TOUCH_SCREEN_HEIGHT)/this->width(),
+                                 TOUCH_SCREEN_HEIGHT*((this->width()*curShort.pos.y())/TOUCH_SCREEN_WIDTH)/this->height(),
+                                 (3*this->width())/TOUCH_SCREEN_WIDTH,
+                                 (3*this->height())/TOUCH_SCREEN_HEIGHT);
 
-        painter.drawEllipse(QPoint(touchButton3X, touchButton3Y), 3, 3);
-    }
-    if (touchButton4 != QGamepadManager::ButtonInvalid)
-    {
-        pen.setColor(Qt::yellow);
-        painter.setPen(pen);
-
-        painter.drawEllipse(QPoint(touchButton4X, touchButton4Y), 3, 3);
     }
 
-    bgLabel->setPixmap(newPic);
+     bgLabel->setPixmap(newPic);
+     bgLabel->show();
+     e->accept();
 }
 
 void TouchScreen::clearImage(void)

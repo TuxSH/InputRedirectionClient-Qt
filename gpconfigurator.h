@@ -39,6 +39,7 @@ public:
        layout->addWidget(resetConfigButton);
 
        setMinimumSize(300, 75);
+
     }
 
     void setCurDeviceId(int id)
@@ -164,7 +165,7 @@ public:
 
            case 17:
              lblCurButton->setText("Guide Button");
-            // btnToMap = QGamepadManager::ButtonGuide;
+             btnToMap = QGamepadManager::ButtonGuide;
              break;
 
          case 18:
@@ -189,9 +190,6 @@ public:
     {
         QGamepadManager::GamepadButton btnToMap = QGamepadManager::ButtonInvalid;
         btnToMap = showDirections(btn);
-
-
-        qDebug() << count;
 
         devId = deviceId;
 
