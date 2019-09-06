@@ -27,8 +27,14 @@
 *.lib
 
 # Executables
+/InputRedirectionClient-Qt
+
 *.exe
 *.out
 *.app
 
 *.user
+
+# QMake build
+Makefile
+.qmake.stash
